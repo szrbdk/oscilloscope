@@ -33,6 +33,7 @@ class Oscilloscope extends StatefulWidget {
   final Color traceColor;
   final Color yAxisColor;
   final bool showYAxis;
+  final xScale;
 
   Oscilloscope(
       {this.traceColor = Colors.white,
@@ -42,6 +43,7 @@ class Oscilloscope extends StatefulWidget {
       this.yAxisMax = 1.0,
       this.yAxisMin = 0.0,
       this.showYAxis = false,
+      this.xScale = 1.0,
       @required this.dataSet});
 
   @override
@@ -73,7 +75,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
               dataSet: widget.dataSet,
               traceColor: widget.traceColor,
               yMin: widget.yAxisMin,
-              yRange: yRange),
+              yRange: yRange,
+              xScale: widget.xScale),
         ),
       ),
     );
