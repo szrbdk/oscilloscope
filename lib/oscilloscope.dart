@@ -120,7 +120,7 @@ class _TracePainter extends CustomPainter {
     int length = dataSet.length;
     if (length > 0) {
       // transform data set to just what we need if bigger than the width(otherwise this would be a memory hog)
-      if (length > size.width) {
+      if (length > size.width / xScale) {
         dataSet.removeAt(0);
         length = dataSet.length;
       }
