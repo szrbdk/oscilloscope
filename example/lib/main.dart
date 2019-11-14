@@ -30,17 +30,22 @@ class _ShellState extends State<Shell> {
   double radians = 0.0;
   Timer _timer;
 
+  var isNegative = false;
   /// method to generate a Test  Wave Pattern Sets
   /// this gives us a value between +1  & -1 for sine & cosine
   _generateTrace(Timer t) {
     // generate our  values
-    var sv = sin((radians * pi));
-    var cv = cos((radians * pi));
+//    var sv = sin((radians * pi));
+    var sv = Random().nextDouble()*1000 * (Random().nextBool() ? 1 : -1);
+    if (DateTime.now().second == 30 || DateTime.now().second == 0) {
+      isNegative = !isNegative;
+    }
+    var cv = 5 * (isNegative ? 1 : -1);
 
     // Add to the growing dataset
     setState(() {
       traceSine.add(sv);
-      traceCosine.add(cv);
+      traceCosine.add(cv.toDouble());
     });
 
     // adjust to recyle the radian value ( as 0 = 2Pi RADS)
@@ -54,7 +59,7 @@ class _ShellState extends State<Shell> {
   initState() {
     super.initState();
     // create our timer to generate test values
-    _timer = Timer.periodic(Duration(milliseconds: 60), _generateTrace);
+    _timer = Timer.periodic(Duration(milliseconds: 128), _generateTrace);
   }
 
   @override
@@ -70,10 +75,11 @@ class _ShellState extends State<Shell> {
       showYAxis: true,
       yAxisColor: Colors.orange,
       padding: 20.0,
-      backgroundColor: Colors.black,
-      traceColor: Colors.green,
-      yAxisMax: 1.0,
-      yAxisMin: -1.0,
+      backgroundColor: Colors.white,
+      traceColor: Colors.black,
+      yAxisMax: 1000,
+      yAxisMin: -1000,
+      xScale: 5.0,
       dataSet: traceSine,
     );
 
@@ -83,8 +89,9 @@ class _ShellState extends State<Shell> {
       padding: 20.0,
       backgroundColor: Colors.black,
       traceColor: Colors.yellow,
-      yAxisMax: 1.0,
-      yAxisMin: -1.0,
+      yAxisMax: 10.0,
+      yAxisMin: -10.0,
+      xScale: 5.0,
       dataSet: traceCosine,
     );
 

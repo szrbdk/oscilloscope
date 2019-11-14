@@ -2,7 +2,11 @@
 // is governed by an Apache License 2.0 that can be found in the LICENSE file.
 library oscilloscope;
 
+import 'dart:typed_data';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 /// A widget that defines a customisable Oscilloscope type display that can be used to graph out data
 ///
@@ -54,6 +58,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
   double yRange;
   double yScale;
 
+  int redrawCount = 0;
   @override
   void initState() {
     super.initState();
@@ -62,6 +67,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   @override
   Widget build(BuildContext context) {
+    print("Count: $redrawCount - ${DateTime.now().second}");
+    redrawCount++;
     return Container(
       padding: EdgeInsets.all(widget.padding),
       width: double.infinity,
@@ -120,8 +127,10 @@ class _TracePainter extends CustomPainter {
     int length = dataSet.length;
     if (length > 0) {
       // transform data set to just what we need if bigger than the width(otherwise this would be a memory hog)
-      if (length > size.width / xScale) {
-        dataSet.removeAt(0);
+      int maxSize = size.width.toDouble() ~/ xScale;
+      if (length > maxSize) {
+//        dataSet.removeAt(0);
+      dataSet.removeRange(0, length - maxSize);
         length = dataSet.length;
       }
 
@@ -133,7 +142,7 @@ class _TracePainter extends CustomPainter {
       for (int p = 0; p < length; p++) {
         double plotPoint =
             size.height - ((dataSet[p].toDouble() - yMin) * yScale);
-        trace.lineTo(p.toDouble() * xScale, plotPoint);
+        trace.lineTo(p.toDouble() * (xScale*0.95), plotPoint);
       }
 
       // display the trace
