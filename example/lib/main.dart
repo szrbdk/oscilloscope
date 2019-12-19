@@ -31,6 +31,8 @@ class _ShellState extends State<Shell> {
   Timer _timer;
 
   var isNegative = false;
+
+//  ScrollController _scrollController = ScrollController(keepScrollOffset: true);
   /// method to generate a Test  Wave Pattern Sets
   /// this gives us a value between +1  & -1 for sine & cosine
   _generateTrace(Timer t) {
@@ -81,6 +83,7 @@ class _ShellState extends State<Shell> {
       yAxisMin: -1000,
       xScale: 5.0,
       dataSet: traceSine,
+      isScrollable: true,
     );
 
     // Create A Scope Display for Cosine
@@ -100,7 +103,9 @@ class _ShellState extends State<Shell> {
       appBar: AppBar(
         title: Text("OscilloScope Demo"),
       ),
-      body: Column(
+      body:
+
+      Column(
         children: <Widget>[
           Expanded(flex: 1, child: scopeOne),
           Expanded(
@@ -110,5 +115,13 @@ class _ShellState extends State<Shell> {
         ],
       ),
     );
+  }
+  double getWidth(BuildContext context){
+    double minWidth = MediaQuery.of(context).size.width; 
+//    if (traceSine.length <= minWidth) {
+//      return minWidth;
+//    }else{
+      return traceSine.length.toDouble()*5.0;
+//    }
   }
 }

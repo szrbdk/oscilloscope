@@ -38,7 +38,7 @@ class Oscilloscope extends StatefulWidget {
   final Color yAxisColor;
   final bool showYAxis;
   final xScale;
-
+  final isScrollable;
   Oscilloscope(
       {this.traceColor = Colors.white,
       this.backgroundColor = Colors.black,
@@ -48,6 +48,7 @@ class Oscilloscope extends StatefulWidget {
       this.yAxisMin = 0.0,
       this.showYAxis = false,
       this.xScale = 1.0,
+      this.isScrollable = false,
       @required this.dataSet});
 
   @override
@@ -58,6 +59,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
   double yRange;
   double yScale;
 
+  ScrollController _scrollController = ScrollController(keepScrollOffset: true);
+
   int redrawCount = 0;
   @override
   void initState() {
@@ -65,28 +68,68 @@ class _OscilloscopeState extends State<Oscilloscope> {
     yRange = widget.yAxisMax - widget.yAxisMin;
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     print("Count: $redrawCount - ${DateTime.now().second}");
     redrawCount++;
-    return Container(
-      padding: EdgeInsets.all(widget.padding),
-      width: double.infinity,
-      height: double.infinity,
-      color: widget.backgroundColor,
-      child: ClipRect(
-        child: CustomPaint(
-          painter: _TracePainter(
-              showYAxis: widget.showYAxis,
-              yAxisColor: widget.yAxisColor,
-              dataSet: widget.dataSet,
-              traceColor: widget.traceColor,
-              yMin: widget.yAxisMin,
-              yRange: yRange,
-              xScale: widget.xScale),
+    scrollToEndIfNeeded();
+    return
+          SingleChildScrollView(
+        physics: ClampingScrollPhysics(),
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: getWidth(context),
+          child: Container(
+            padding: EdgeInsets.all(widget.padding),
+            width: double.infinity,
+            height: double.infinity,
+            color: widget.backgroundColor,
+            child: ClipRect(
+              child: CustomPaint(
+                painter: _TracePainter(
+                    showYAxis: widget.showYAxis,
+                    yAxisColor: widget.yAxisColor,
+                    dataSet: widget.dataSet,
+                    traceColor: widget.traceColor,
+                    yMin: widget.yAxisMin,
+                    yRange: yRange,
+                    xScale: widget.xScale,
+                    isScrollable: widget.isScrollable
+                ),
+              ),
+            ),
+          ),
         ),
-      ),
-    );
+      );
+  }
+
+  void scrollToEndIfNeeded(){
+    if (!widget.isScrollable) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      double width = MediaQuery.of(context).size.width;
+      print("MAx Extent: $width, ${_scrollController.position.maxScrollExtent}, currentPos: ${_scrollController.offset}");
+      if (widget.dataSet.length*widget.xScale > width) {
+        if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent*0.90 ) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      }
+    });
+  }
+
+  double getWidth(BuildContext context){
+    double width = MediaQuery.of(context).size.width;
+    if (!widget.isScrollable) {
+      return width;
+    }
+    if (widget.dataSet.length == 0) {
+      return width;
+    }
+    return widget.dataSet.length.toDouble()*5.0;
   }
 }
 
@@ -99,7 +142,7 @@ class _TracePainter extends CustomPainter {
   final Color yAxisColor;
   final bool showYAxis;
   final double yRange;
-
+  final bool isScrollable;
   _TracePainter(
       {this.showYAxis,
       this.yAxisColor,
@@ -107,7 +150,9 @@ class _TracePainter extends CustomPainter {
       this.yMin,
       this.dataSet,
       this.xScale = 1.0,
-      this.traceColor = Colors.white});
+      this.traceColor = Colors.white,
+      this.isScrollable = false
+      });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -125,14 +170,17 @@ class _TracePainter extends CustomPainter {
 
     // only start plot if dataset has data
     int length = dataSet.length;
+
     if (length > 0) {
       // transform data set to just what we need if bigger than the width(otherwise this would be a memory hog)
-      int maxSize = (size.width.toDouble() ~/ xScale) + 1;
-      if (length > maxSize) {
-//        dataSet.removeAt(0);
-      dataSet.removeRange(0, length - maxSize);
-        length = dataSet.length;
+      if (!isScrollable) {
+        int maxSize = (size.width.toDouble() ~/ xScale) + 1;
+        if (length > maxSize) {
+          dataSet.removeRange(0, length - maxSize);
+          length = dataSet.length;
+        }
       }
+
 
       // Create Path and set Origin to first data point
       Path trace = Path();
@@ -154,6 +202,7 @@ class _TracePainter extends CustomPainter {
         Offset yEnd = Offset(size.width, size.height - (0.0 - yMin) * yScale);
         canvas.drawLine(yStart, yEnd, axisPaint);
       }
+      print("Dataset length: ${dataSet.length}");
     }
   }
 
