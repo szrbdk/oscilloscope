@@ -2,12 +2,12 @@
 // is governed by an Apache License 2.0 that can be found in the LICENSE file.
 library oscilloscope;
 
+import 'dart:math' as prefix0;
 import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
-
+import 'dart:math';
 /// A widget that defines a customisable Oscilloscope type display that can be used to graph out data
 ///
 /// The [dataSet] arguments MUST be a List<double> -  this is the data that is used by the display to generate a trace
@@ -37,8 +37,10 @@ class Oscilloscope extends StatefulWidget {
   final Color traceColor;
   final Color yAxisColor;
   final bool showYAxis;
-  final xScale;
-  final isScrollable;
+  final double xScale;
+  final bool isScrollable;
+  final bool isZoomable;
+
   Oscilloscope(
       {this.traceColor = Colors.white,
       this.backgroundColor = Colors.black,
@@ -49,6 +51,7 @@ class Oscilloscope extends StatefulWidget {
       this.showYAxis = false,
       this.xScale = 1.0,
       this.isScrollable = false,
+      this.isZoomable = false,
       @required this.dataSet});
 
   @override
@@ -59,9 +62,18 @@ class _OscilloscopeState extends State<Oscilloscope> {
   double yRange;
   double yScale;
 
+  double zoomFactor = 1.0;
+  double prevValue;
+
+
   ScrollController _scrollController = ScrollController(keepScrollOffset: true);
 
-  int redrawCount = 0;
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -72,11 +84,24 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   @override
   Widget build(BuildContext context) {
-    print("Count: $redrawCount - ${DateTime.now().second}");
-    redrawCount++;
     scrollToEndIfNeeded();
-    return
-          SingleChildScrollView(
+    final yMin = widget.yAxisMin * zoomFactor;
+    final yMax = widget.yAxisMax * zoomFactor;
+    return GestureDetector(
+      onScaleStart: (state){
+        prevValue = zoomFactor;
+      },
+      onScaleUpdate: (state){
+        if (widget.isZoomable) {
+          setState(() {
+            zoomFactor = prevValue * state.scale;
+          });
+        }
+      },
+      onScaleEnd: (_){
+        prevValue = null;
+      },
+      child: SingleChildScrollView(
         physics: ClampingScrollPhysics(),
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
@@ -94,8 +119,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
                     yAxisColor: widget.yAxisColor,
                     dataSet: widget.dataSet,
                     traceColor: widget.traceColor,
-                    yMin: widget.yAxisMin,
-                    yRange: yRange,
+                    yMin: yMin,
+                    yRange: yMax - yMin,
                     xScale: widget.xScale,
                     isScrollable: widget.isScrollable
                 ),
@@ -103,7 +128,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
             ),
           ),
         ),
-      );
+      ),
+    );
   }
 
   void scrollToEndIfNeeded(){
@@ -112,9 +138,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
     }
     WidgetsBinding.instance.addPostFrameCallback((_){
       double width = MediaQuery.of(context).size.width;
-      print("MAx Extent: $width, ${_scrollController.position.maxScrollExtent}, currentPos: ${_scrollController.offset}");
       if (widget.dataSet.length*widget.xScale > width) {
-        if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent*0.90 ) {
+        if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
           _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
         }
       }
@@ -129,7 +154,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
     if (widget.dataSet.length == 0) {
       return width;
     }
-    return widget.dataSet.length.toDouble()*5.0;
+    return widget.dataSet.length.toDouble()*widget.xScale;
   }
 }
 
@@ -165,7 +190,6 @@ class _TracePainter extends CustomPainter {
     final axisPaint = Paint()
       ..strokeWidth = 1.0
       ..color = yAxisColor;
-
     double yScale = (size.height / yRange);
 
     // only start plot if dataset has data
@@ -198,11 +222,13 @@ class _TracePainter extends CustomPainter {
 
       // if yAxis required draw it here
       if (showYAxis) {
-        Offset yStart = Offset(0.0, size.height - (0.0 - yMin) * yScale);
-        Offset yEnd = Offset(size.width, size.height - (0.0 - yMin) * yScale);
+        double centerPoint = size.height - (0.0 - yMin) * yScale;
+//        double scale = size.height / yRange;
+//        print("Center: $centerPoint, ${yRange}");
+        Offset yStart = Offset(0.0, centerPoint);
+        Offset yEnd = Offset(size.width, centerPoint);
         canvas.drawLine(yStart, yEnd, axisPaint);
       }
-      print("Dataset length: ${dataSet.length}");
     }
   }
 

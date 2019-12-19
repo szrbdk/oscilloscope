@@ -32,13 +32,15 @@ class _ShellState extends State<Shell> {
 
   var isNegative = false;
 
+  var heightScale = 1.0;
+
 //  ScrollController _scrollController = ScrollController(keepScrollOffset: true);
   /// method to generate a Test  Wave Pattern Sets
   /// this gives us a value between +1  & -1 for sine & cosine
   _generateTrace(Timer t) {
     // generate our  values
 //    var sv = sin((radians * pi));
-    var sv = Random().nextDouble()*1000 * (Random().nextBool() ? 1 : -1);
+    var sv = Random().nextDouble()*(Random().nextDouble()*100) * (Random().nextBool() ? 1 : -1);
     if (DateTime.now().second == 30 || DateTime.now().second == 0) {
       isNegative = !isNegative;
     }
@@ -70,21 +72,50 @@ class _ShellState extends State<Shell> {
     super.dispose();
   }
 
+  double prevScale;
+
   @override
   Widget build(BuildContext context) {
     // Create A Scope Display for Sine
-    Oscilloscope scopeOne = Oscilloscope(
+    Widget scopeOne = Oscilloscope(
       showYAxis: true,
       yAxisColor: Colors.orange,
       padding: 20.0,
       backgroundColor: Colors.white,
       traceColor: Colors.black,
-      yAxisMax: 1000,
-      yAxisMin: -1000,
+      yAxisMax: 1000*heightScale,
+      yAxisMin: -1000*heightScale,
       xScale: 5.0,
       dataSet: traceSine,
       isScrollable: true,
+      isZoomable: true,
     );
+//    Widget scopeOne = GestureDetector(
+//      onScaleStart: (state){
+//        prevScale = heightScale;
+//      },
+//      onScaleUpdate: (state){
+//        print("Scale State: ${state.verticalScale}");
+//        setState(() {
+//          heightScale = prevScale * state.scale;
+//        });
+//      },
+//      onScaleEnd: (_){
+//        prevScale = null;
+//      },
+//      child: Oscilloscope(
+//        showYAxis: true,
+//        yAxisColor: Colors.orange,
+//        padding: 20.0,
+//        backgroundColor: Colors.white,
+//        traceColor: Colors.black,
+//        yAxisMax: 1000*heightScale,
+//        yAxisMin: -1000*heightScale,
+//        xScale: 5.0,
+//        dataSet: traceSine,
+//        isScrollable: true,
+//      ),
+//    );
 
     // Create A Scope Display for Cosine
     Oscilloscope scopeTwo = Oscilloscope(
@@ -96,22 +127,41 @@ class _ShellState extends State<Shell> {
       yAxisMin: -10.0,
       xScale: 5.0,
       dataSet: traceCosine,
+      isDynamicRange: true,
     );
 
     // Generate the Scaffold
     return Scaffold(
       appBar: AppBar(
         title: Text("OscilloScope Demo"),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: (){
+              setState(() {
+                heightScale = heightScale + 0.1;
+              });
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.minimize),
+            onPressed: (){
+              setState(() {
+                heightScale = heightScale - 0.1;
+              });
+            },
+          )
+        ],
       ),
       body:
 
       Column(
         children: <Widget>[
           Expanded(flex: 1, child: scopeOne),
-          Expanded(
-            flex: 1,
-            child: scopeTwo,
-          ),
+//          Expanded(
+//            flex: 1,
+//            child: scopeTwo,
+//          ),
         ],
       ),
     );
