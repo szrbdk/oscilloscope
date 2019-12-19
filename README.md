@@ -1,4 +1,15 @@
-# oscilloscope widget package for Flutter
+# oscilloscope widget package for Flutter 
+
+###This is an Enhanced fork of oscilloscope plugin.
+
+###Additional features:
+
+- Adjustable xScale
+- Ability to store values and scroll through the widget
+- Pinch to zoom in / out
+ 
+ 
+#-----
 
 Oscilloscope is a graphical display  similar to the trace on an oscilloscope that will display values as it scrolls across the screen. The widget uses a *List <double>* as the source of the data to display and will scale the information to fit the display. Take a look at the example to see how it can be used.
 
