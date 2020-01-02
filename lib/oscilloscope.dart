@@ -82,7 +82,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   @override
   Widget build(BuildContext context) {
-    scrollToEndIfNeeded();
+    scrollToEndIfNeeded(context);
     final yMin = widget.yAxisMin * zoomFactor;
     final yMax = widget.yAxisMax * zoomFactor;
     return GestureDetector(
@@ -130,25 +130,19 @@ class _OscilloscopeState extends State<Oscilloscope> {
     );
   }
 
-  void scrollToEndIfNeeded(){
+  void scrollToEndIfNeeded(BuildContext context){
     if (!widget.isScrollable) {
       return;
     }
-    if (context!=null) {
-      try{
-        WidgetsBinding.instance.addPostFrameCallback((_){
-          double width = MediaQuery.of(context).size.width;
-          if (widget.dataSet.length*widget.xScale > width) {
-            if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
-              _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-            }
+      WidgetsBinding.instance.addPostFrameCallback((_){
+        double width = MediaQuery.of(context).size.width;
+        if (widget.dataSet.length*widget.xScale > width) {
+          if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
           }
-        });
-      }catch(exception){
-        print("Got Exception: $exception");
-      }
+        }
+      });
     }
-  }
 
   double getWidth(BuildContext context){
     double width = MediaQuery.of(context).size.width;
