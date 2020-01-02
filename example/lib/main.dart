@@ -127,7 +127,7 @@ class _ShellState extends State<Shell> {
       yAxisMin: -10.0,
       xScale: 5.0,
       dataSet: traceCosine,
-      isDynamicRange: true,
+      isZoomable: true,
     );
 
     // Generate the Scaffold

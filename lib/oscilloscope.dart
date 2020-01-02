@@ -80,8 +80,6 @@ class _OscilloscopeState extends State<Oscilloscope> {
     yRange = widget.yAxisMax - widget.yAxisMin;
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     scrollToEndIfNeeded();
@@ -136,14 +134,16 @@ class _OscilloscopeState extends State<Oscilloscope> {
     if (!widget.isScrollable) {
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      double width = MediaQuery.of(context).size.width;
-      if (widget.dataSet.length*widget.xScale > width) {
-        if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
-          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    if (context!=null) {
+      WidgetsBinding.instance.addPostFrameCallback((_){
+        double width = MediaQuery.of(context).size.width;
+        if (widget.dataSet.length*widget.xScale > width) {
+          if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   double getWidth(BuildContext context){
