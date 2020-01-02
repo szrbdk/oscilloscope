@@ -135,14 +135,18 @@ class _OscilloscopeState extends State<Oscilloscope> {
       return;
     }
     if (context!=null) {
-      WidgetsBinding.instance.addPostFrameCallback((_){
-        double width = MediaQuery.of(context).size.width;
-        if (widget.dataSet.length*widget.xScale > width) {
-          if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      try{
+        WidgetsBinding.instance.addPostFrameCallback((_){
+          double width = MediaQuery.of(context).size.width;
+          if (widget.dataSet.length*widget.xScale > width) {
+            if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
+              _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            }
           }
-        }
-      });
+        });
+      }catch(exception){
+        print("Got Exception: $exception");
+      }
     }
   }
 
