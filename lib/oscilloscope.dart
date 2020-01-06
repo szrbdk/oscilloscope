@@ -2,7 +2,7 @@
 // is governed by an Apache License 2.0 that can be found in the LICENSE file.
 library oscilloscope;
 
-import 'dart:math' as prefix0;
+import 'dart:math' as Math;
 import 'dart:typed_data';
 import 'dart:ui';
 
@@ -40,7 +40,7 @@ class Oscilloscope extends StatefulWidget {
   final double xScale;
   final bool isScrollable;
   final bool isZoomable;
-
+  final bool isAdaptiveRange;
   Oscilloscope(
       {this.traceColor = Colors.white,
       this.backgroundColor = Colors.black,
@@ -52,6 +52,7 @@ class Oscilloscope extends StatefulWidget {
       this.xScale = 1.0,
       this.isScrollable = false,
       this.isZoomable = false,
+      this.isAdaptiveRange = false,
       @required this.dataSet});
 
   @override
@@ -65,7 +66,9 @@ class _OscilloscopeState extends State<Oscilloscope> {
   double zoomFactor = 1.0;
   double prevValue;
 
-
+  double yMin;
+  double yMax;
+  List<double> normaliedDataSet;
   ScrollController _scrollController = ScrollController(keepScrollOffset: true);
 
   @override
@@ -77,14 +80,15 @@ class _OscilloscopeState extends State<Oscilloscope> {
   @override
   void initState() {
     super.initState();
-    yRange = widget.yAxisMax - widget.yAxisMin;
+    yMax = widget.yAxisMax;
+    yMin = widget.yAxisMin;
+    yRange = yMax - yMin;
   }
 
   @override
   Widget build(BuildContext context) {
     scrollToEndIfNeeded(context);
-    final yMin = widget.yAxisMin * zoomFactor;
-    final yMax = widget.yAxisMax * zoomFactor;
+    updateYRangeIfNeeded();
     return GestureDetector(
       onScaleStart: (state){
         prevValue = zoomFactor;
@@ -130,16 +134,37 @@ class _OscilloscopeState extends State<Oscilloscope> {
     );
   }
 
+
+
+  void updateYRangeIfNeeded(){
+    if (widget.isAdaptiveRange && widget.dataSet.length > 0) {
+      yMin = widget.dataSet.reduce(Math.min) * 1.1;
+      yMax = widget.dataSet.reduce(Math.max) * 1.1;
+      print("Reducced YMin: $yMin, yMax: $yMax");
+    }else{
+      yMin = widget.yAxisMin;
+      yMax = widget.yAxisMax;
+    }
+      yMin = yMin * zoomFactor;
+      yMax = yMax * zoomFactor;
+      yRange = yMax - yMin;
+      print("YMin: $yMin, yMax: $yMax");
+  }
+
   void scrollToEndIfNeeded(BuildContext context){
-    if (!widget.isScrollable) {
+    if (!widget.isScrollable || context == null) {
       return;
     }
       WidgetsBinding.instance.addPostFrameCallback((_){
-        double width = MediaQuery.of(context).size.width;
-        if (widget.dataSet.length*widget.xScale > width) {
-          if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        try{
+          double width = MediaQuery.of(context).size.width;
+          if (widget.dataSet.length*widget.xScale > width) {
+            if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
+              _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+            }
           }
+        }catch(exception){
+          print("Got Error from osciloscope: $exception");
         }
       });
     }
