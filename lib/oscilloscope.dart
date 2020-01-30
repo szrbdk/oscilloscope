@@ -41,6 +41,7 @@ class Oscilloscope extends StatefulWidget {
   final bool isScrollable;
   final bool isZoomable;
   final bool isAdaptiveRange;
+  final bool willNormalizeData;
   Oscilloscope(
       {this.traceColor = Colors.white,
       this.backgroundColor = Colors.black,
@@ -53,6 +54,7 @@ class Oscilloscope extends StatefulWidget {
       this.isScrollable = false,
       this.isZoomable = false,
       this.isAdaptiveRange = false,
+      this.willNormalizeData = false,
       @required this.dataSet});
 
   @override
@@ -80,14 +82,21 @@ class _OscilloscopeState extends State<Oscilloscope> {
   @override
   void initState() {
     super.initState();
-    yMax = widget.yAxisMax;
-    yMin = widget.yAxisMin;
-    yRange = yMax - yMin;
+    if (widget.willNormalizeData) {
+      yMax = 1;
+      yMin = 0;
+      yRange = 1;
+    }else{
+      yMax = widget.yAxisMax;
+      yMin = widget.yAxisMin;
+      yRange = yMax - yMin;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     scrollToEndIfNeeded(context);
+    normalizeDataIfNeeded();
     updateYRangeIfNeeded();
     return GestureDetector(
       onScaleStart: (state){
@@ -119,10 +128,10 @@ class _OscilloscopeState extends State<Oscilloscope> {
                 painter: _TracePainter(
                     showYAxis: widget.showYAxis,
                     yAxisColor: widget.yAxisColor,
-                    dataSet: widget.dataSet,
+                    dataSet: normaliedDataSet,
                     traceColor: widget.traceColor,
                     yMin: yMin,
-                    yRange: yMax - yMin,
+                    yRange: yRange,
                     xScale: widget.xScale,
                     isScrollable: widget.isScrollable
                 ),
@@ -134,13 +143,37 @@ class _OscilloscopeState extends State<Oscilloscope> {
     );
   }
 
+  void normalizeDataIfNeeded(){
+    if (widget.willNormalizeData) {
+      normaliedDataSet = getNormalizedData(widget.dataSet);
+    }else{
+      normaliedDataSet = widget.dataSet;
+    }
+  }
 
+  List<double> getNormalizedData(List<double> dataSet){
+    if (dataSet.length > 0) {
+      List<double> dataArray = [];
+      double min =  dataSet.reduce(Math.min);
+      double max =  dataSet.reduce(Math.max);
+      for(int i = 0;i<dataSet.length;i++){
+        if (max == min) {
+          dataArray.add(0.5);
+        }else{
+          double normalized = (dataSet[i] - min) / (max-min);
+          dataArray.add(normalized);
+        }
+      }
+      return dataArray;
+    }else{
+      return [];
+    }
+  }
 
   void updateYRangeIfNeeded(){
-    if (widget.isAdaptiveRange && widget.dataSet.length > 0) {
-      yMin = widget.dataSet.reduce(Math.min) * 1.1;
-      yMax = widget.dataSet.reduce(Math.max) * 1.1;
-      print("Reducced YMin: $yMin, yMax: $yMax");
+    if (widget.isAdaptiveRange && normaliedDataSet.length > 0) {
+      yMin = normaliedDataSet.reduce(Math.min) * 1.1;
+      yMax = normaliedDataSet.reduce(Math.max) * 1.1;
     }else{
       yMin = widget.yAxisMin;
       yMax = widget.yAxisMax;
@@ -148,7 +181,6 @@ class _OscilloscopeState extends State<Oscilloscope> {
       yMin = yMin * zoomFactor;
       yMax = yMax * zoomFactor;
       yRange = yMax - yMin;
-      print("YMin: $yMin, yMax: $yMax");
   }
 
   void scrollToEndIfNeeded(BuildContext context){
