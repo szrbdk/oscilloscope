@@ -42,6 +42,8 @@ class Oscilloscope extends StatefulWidget {
   final bool isZoomable;
   final bool isAdaptiveRange;
   final bool willNormalizeData;
+  final GridDrawingSetting gridDrawingSetting;
+
   Oscilloscope(
       {this.traceColor = Colors.white,
       this.backgroundColor = Colors.black,
@@ -55,6 +57,7 @@ class Oscilloscope extends StatefulWidget {
       this.isZoomable = false,
       this.isAdaptiveRange = false,
       this.willNormalizeData = false,
+      this.gridDrawingSetting,
       @required this.dataSet});
 
   @override
@@ -133,7 +136,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
                     yMin: yMin,
                     yRange: yRange,
                     xScale: widget.xScale,
-                    isScrollable: widget.isScrollable
+                    isScrollable: widget.isScrollable,
+                    gridDrawingSetting: widget.gridDrawingSetting
                 ),
               ),
             ),
@@ -223,6 +227,7 @@ class _TracePainter extends CustomPainter {
   final bool showYAxis;
   final double yRange;
   final bool isScrollable;
+  final GridDrawingSetting gridDrawingSetting;
   _TracePainter(
       {this.showYAxis,
       this.yAxisColor,
@@ -231,7 +236,8 @@ class _TracePainter extends CustomPainter {
       this.dataSet,
       this.xScale = 1.0,
       this.traceColor = Colors.white,
-      this.isScrollable = false
+      this.isScrollable = false,
+      this.gridDrawingSetting
       });
 
   @override
@@ -278,15 +284,42 @@ class _TracePainter extends CustomPainter {
       // if yAxis required draw it here
       if (showYAxis) {
         double centerPoint = size.height - (0.0 - yMin) * yScale;
-//        double scale = size.height / yRange;
-//        print("Center: $centerPoint, ${yRange}");
         Offset yStart = Offset(0.0, centerPoint);
         Offset yEnd = Offset(size.width, centerPoint);
         canvas.drawLine(yStart, yEnd, axisPaint);
+      }
+
+      if (gridDrawingSetting != null) {
+        final gridPaint = Paint()
+              ..color = gridDrawingSetting.gridColor
+              ..strokeWidth = gridDrawingSetting.strokeWidth;
+
+          if (gridDrawingSetting.drawXAxisGrid) {
+            for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
+              canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
+            }
+          }
+          if (gridDrawingSetting.drawYAxisGrid) {
+            for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
+              canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
+            }
+          }
       }
     }
   }
 
   @override
   bool shouldRepaint(_TracePainter old) => true;
+}
+
+class GridDrawingSetting{
+  final bool drawXAxisGrid;
+  final bool drawYAxisGrid;
+  final int xAxisGridSpace;
+  final int yAxisGridSpace;
+  final Color gridColor;
+  final double strokeWidth;
+
+  GridDrawingSetting(this.drawXAxisGrid, this.drawYAxisGrid,
+  {this.xAxisGridSpace = 10, this.yAxisGridSpace = 10,this.gridColor = Colors.grey,this.strokeWidth = 0.5});
 }

@@ -87,8 +87,14 @@ class _ShellState extends State<Shell> {
       yAxisMin: -1000*heightScale,
       xScale: 5.0,
       dataSet: traceSine,
-      isScrollable: true,
+      isScrollable: false,
       isZoomable: true,
+      gridDrawingSetting: GridDrawingSetting(
+          true,true, 
+          xAxisGridSpace: 10,
+          yAxisGridSpace: 10,
+          gridColor: Colors.black26.withAlpha(50)
+      ),
     );
 //    Widget scopeOne = GestureDetector(
 //      onScaleStart: (state){
