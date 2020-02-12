@@ -46,19 +46,19 @@ class Oscilloscope extends StatefulWidget {
 
   Oscilloscope(
       {this.traceColor = Colors.white,
-      this.backgroundColor = Colors.black,
-      this.yAxisColor = Colors.white,
-      this.padding = 10.0,
-      this.yAxisMax = 1.0,
-      this.yAxisMin = 0.0,
-      this.showYAxis = false,
-      this.xScale = 1.0,
-      this.isScrollable = false,
-      this.isZoomable = false,
-      this.isAdaptiveRange = false,
-      this.willNormalizeData = false,
-      this.gridDrawingSetting,
-      @required this.dataSet});
+        this.backgroundColor = Colors.black,
+        this.yAxisColor = Colors.white,
+        this.padding = 10.0,
+        this.yAxisMax = 1.0,
+        this.yAxisMin = 0.0,
+        this.showYAxis = false,
+        this.xScale = 1.0,
+        this.isScrollable = false,
+        this.isZoomable = false,
+        this.isAdaptiveRange = false,
+        this.willNormalizeData = false,
+        this.gridDrawingSetting,
+        @required this.dataSet});
 
   @override
   _OscilloscopeState createState() => _OscilloscopeState();
@@ -68,8 +68,10 @@ class _OscilloscopeState extends State<Oscilloscope> {
   double yRange;
   double yScale;
 
-  double zoomFactor = 1.0;
-  double prevValue;
+  double yZoomFactor = 1.0;
+  double xZoomFactor = 1.0;
+  double prevXValue;
+  double prevYValue;
 
   double yMin;
   double yMax;
@@ -101,19 +103,23 @@ class _OscilloscopeState extends State<Oscilloscope> {
     scrollToEndIfNeeded(context);
     normalizeDataIfNeeded();
     updateYRangeIfNeeded();
+
     return GestureDetector(
       onScaleStart: (state){
-        prevValue = zoomFactor;
+        prevXValue = xZoomFactor;
+        prevYValue = yZoomFactor;
       },
       onScaleUpdate: (state){
         if (widget.isZoomable) {
           setState(() {
-            zoomFactor = prevValue * state.scale;
+            xZoomFactor = prevXValue * state.horizontalScale;
+            yZoomFactor = prevYValue * state.verticalScale;
           });
         }
       },
       onScaleEnd: (_){
-        prevValue = null;
+        prevXValue = null;
+        prevYValue = null;
       },
       child: SingleChildScrollView(
         physics: ClampingScrollPhysics(),
@@ -135,7 +141,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
                     traceColor: widget.traceColor,
                     yMin: yMin,
                     yRange: yRange,
-                    xScale: widget.xScale,
+                    xScale: widget.xScale * xZoomFactor,
                     isScrollable: widget.isScrollable,
                     gridDrawingSetting: widget.gridDrawingSetting
                 ),
@@ -182,28 +188,28 @@ class _OscilloscopeState extends State<Oscilloscope> {
       yMin = widget.yAxisMin;
       yMax = widget.yAxisMax;
     }
-      yMin = yMin * zoomFactor;
-      yMax = yMax * zoomFactor;
-      yRange = yMax - yMin;
+    yMin = yMin * yZoomFactor;
+    yMax = yMax * yZoomFactor;
+    yRange = yMax - yMin;
   }
 
   void scrollToEndIfNeeded(BuildContext context){
     if (!widget.isScrollable || context == null) {
       return;
     }
-      WidgetsBinding.instance.addPostFrameCallback((_){
-        try{
-          double width = MediaQuery.of(context).size.width;
-          if (widget.dataSet.length*widget.xScale > width) {
-            if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
-              _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-            }
+    WidgetsBinding.instance.addPostFrameCallback((_){
+      try{
+        double width = MediaQuery.of(context).size.width;
+        if (widget.dataSet.length*widget.xScale > width) {
+          if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
+            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
           }
-        }catch(exception){
-          print("Got Error from osciloscope: $exception");
         }
-      });
-    }
+      }catch(exception){
+        print("Got Error from osciloscope: $exception");
+      }
+    });
+  }
 
   double getWidth(BuildContext context){
     double width = MediaQuery.of(context).size.width;
@@ -230,14 +236,14 @@ class _TracePainter extends CustomPainter {
   final GridDrawingSetting gridDrawingSetting;
   _TracePainter(
       {this.showYAxis,
-      this.yAxisColor,
-      this.yRange,
-      this.yMin,
-      this.dataSet,
-      this.xScale = 1.0,
-      this.traceColor = Colors.white,
-      this.isScrollable = false,
-      this.gridDrawingSetting
+        this.yAxisColor,
+        this.yRange,
+        this.yMin,
+        this.dataSet,
+        this.xScale = 1.0,
+        this.traceColor = Colors.white,
+        this.isScrollable = false,
+        this.gridDrawingSetting
       });
 
   @override
@@ -291,19 +297,19 @@ class _TracePainter extends CustomPainter {
 
       if (gridDrawingSetting != null) {
         final gridPaint = Paint()
-              ..color = gridDrawingSetting.gridColor
-              ..strokeWidth = gridDrawingSetting.strokeWidth;
+          ..color = gridDrawingSetting.gridColor
+          ..strokeWidth = gridDrawingSetting.strokeWidth;
 
-          if (gridDrawingSetting.drawXAxisGrid) {
-            for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
-              canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
-            }
+        if (gridDrawingSetting.drawXAxisGrid) {
+          for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
+            canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
           }
-          if (gridDrawingSetting.drawYAxisGrid) {
-            for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
-              canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
-            }
+        }
+        if (gridDrawingSetting.drawYAxisGrid) {
+          for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
+            canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
           }
+        }
       }
     }
   }
@@ -321,5 +327,5 @@ class GridDrawingSetting{
   final double strokeWidth;
 
   GridDrawingSetting(this.drawXAxisGrid, this.drawYAxisGrid,
-  {this.xAxisGridSpace = 10, this.yAxisGridSpace = 10,this.gridColor = Colors.grey,this.strokeWidth = 0.5});
+      {this.xAxisGridSpace = 10, this.yAxisGridSpace = 10,this.gridColor = Colors.grey,this.strokeWidth = 0.5});
 }
