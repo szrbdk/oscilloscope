@@ -281,7 +281,7 @@ class _TracePainter extends CustomPainter {
       for (int p = 0; p < length; p++) {
         double plotPoint =
             size.height - ((dataSet[p].toDouble() - yMin) * yScale);
-        trace.lineTo(p.toDouble() * (xScale*0.95), plotPoint);
+        trace.lineTo(p.toDouble() * (xScale), plotPoint);
       }
 
       // display the trace
