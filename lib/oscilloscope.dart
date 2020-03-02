@@ -131,35 +131,51 @@ class _OscilloscopeState extends State<Oscilloscope> {
         prevXValue = null;
         prevYValue = null;
       },
-      child: SingleChildScrollView(
-        key: _widgetKey,
-        physics: ClampingScrollPhysics(),
-        controller: _scrollController,
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: getWidth(context),
-          child: Container(
-            padding: EdgeInsets.all(widget.padding),
-            width: double.infinity,
-            height: double.infinity,
-            color: widget.backgroundColor,
-            child: ClipRect(
-              child: CustomPaint(
-                painter: _TracePainter(
-                    showYAxis: widget.showYAxis,
-                    yAxisColor: widget.yAxisColor,
-                    dataSet: normaliedDataSet,
-                    traceColor: widget.traceColor,
-                    yMin: yMin,
-                    yRange: yRange,
-                    xScale: widget.xScale * xZoomFactor,
-                    isScrollable: widget.isScrollable,
-                    gridDrawingSetting: widget.gridDrawingSetting
+      child: Stack(
+        children: <Widget>[SingleChildScrollView(
+          key: _widgetKey,
+          physics: ClampingScrollPhysics(),
+          controller: _scrollController,
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: getWidth(context),
+            child: Container(
+              padding: EdgeInsets.all(widget.padding),
+              width: double.infinity,
+              height: double.infinity,
+              color: widget.backgroundColor,
+              child: ClipRect(
+                child: CustomPaint(
+                  painter: _TracePainter(
+                      showYAxis: widget.showYAxis,
+                      yAxisColor: widget.yAxisColor,
+                      dataSet: normaliedDataSet,
+                      traceColor: widget.traceColor,
+                      yMin: yMin,
+                      yRange: yRange,
+                      xScale: widget.xScale * xZoomFactor,
+                      isScrollable: widget.isScrollable,
+                      gridDrawingSetting: widget.gridDrawingSetting
+                  ),
                 ),
               ),
             ),
           ),
         ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            child: (yZoomFactor != 1.0 || xZoomFactor != 1.0) ? IconButton(
+              icon: Icon(Icons.refresh, color: widget.traceColor,),
+              onPressed: (){
+                setState(() {
+                  yZoomFactor = 1.0;
+                  xZoomFactor = 1.0;
+                });
+              },
+            ) : Container(),
+          )
+        ],
       ),
     );
   }
