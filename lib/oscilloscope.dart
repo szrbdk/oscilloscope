@@ -73,10 +73,14 @@ class _OscilloscopeState extends State<Oscilloscope> {
   double prevXValue;
   double prevYValue;
 
+  double verticalDragStart;
+
   double yMin;
   double yMax;
   List<double> normaliedDataSet;
   ScrollController _scrollController = ScrollController(keepScrollOffset: true);
+
+  GlobalKey _widgetKey = GlobalKey();
 
   @override
   void dispose() {
@@ -103,17 +107,23 @@ class _OscilloscopeState extends State<Oscilloscope> {
     scrollToEndIfNeeded(context);
     normalizeDataIfNeeded();
     updateYRangeIfNeeded();
-
     return GestureDetector(
+      onVerticalDragUpdate: (details){
+        if (widget.isZoomable) {
+          setState(() {
+            yZoomFactor = yZoomFactor + ((details.primaryDelta >= 0) ? 0.05 : -0.05);
+          });
+        }
+      },
       onScaleStart: (state){
         prevXValue = xZoomFactor;
-        prevYValue = yZoomFactor;
+//        prevYValue = yZoomFactor;
       },
       onScaleUpdate: (state){
         if (widget.isZoomable) {
           setState(() {
             xZoomFactor = prevXValue * state.horizontalScale;
-            yZoomFactor = prevYValue * state.verticalScale;
+//            yZoomFactor = prevYValue * state.verticalScale;
           });
         }
       },
@@ -122,6 +132,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
         prevYValue = null;
       },
       child: SingleChildScrollView(
+        key: _widgetKey,
         physics: ClampingScrollPhysics(),
         controller: _scrollController,
         scrollDirection: Axis.horizontal,
@@ -188,9 +199,9 @@ class _OscilloscopeState extends State<Oscilloscope> {
       yMin = widget.yAxisMin;
       yMax = widget.yAxisMax;
     }
-    yMin = yMin * yZoomFactor;
-    yMax = yMax * yZoomFactor;
-    yRange = yMax - yMin;
+    yMin = yMin;
+    yMax = yMax;
+    yRange = (yMax - yMin)*yZoomFactor;
   }
 
   void scrollToEndIfNeeded(BuildContext context){
@@ -212,14 +223,19 @@ class _OscilloscopeState extends State<Oscilloscope> {
   }
 
   double getWidth(BuildContext context){
-    double width = MediaQuery.of(context).size.width;
+    double mediaQueryWidth = MediaQuery.of(context).size.width;
+    double width = mediaQueryWidth * xZoomFactor;
     if (!widget.isScrollable) {
       return width;
     }
     if (widget.dataSet.length == 0) {
       return width;
     }
-    return widget.dataSet.length.toDouble()*widget.xScale;
+    double calculatedWidth = widget.dataSet.length.toDouble()*widget.xScale*xZoomFactor;
+    if (calculatedWidth < mediaQueryWidth) {
+      calculatedWidth = mediaQueryWidth;
+    }
+    return calculatedWidth;
   }
 }
 
@@ -257,8 +273,8 @@ class _TracePainter extends CustomPainter {
     final axisPaint = Paint()
       ..strokeWidth = 1.0
       ..color = yAxisColor;
-    double yScale = (size.height / yRange);
 
+    double yScale = (size.height / yRange);
     // only start plot if dataset has data
     int length = dataSet.length;
 
@@ -281,6 +297,8 @@ class _TracePainter extends CustomPainter {
       for (int p = 0; p < length; p++) {
         double plotPoint =
             size.height - ((dataSet[p].toDouble() - yMin) * yScale);
+        if (p == 0) {
+        }
         trace.lineTo(p.toDouble() * (xScale), plotPoint);
       }
 
@@ -294,21 +312,20 @@ class _TracePainter extends CustomPainter {
         Offset yEnd = Offset(size.width, centerPoint);
         canvas.drawLine(yStart, yEnd, axisPaint);
       }
+    }
+    if (gridDrawingSetting != null) {
+      final gridPaint = Paint()
+        ..color = gridDrawingSetting.gridColor
+        ..strokeWidth = gridDrawingSetting.strokeWidth;
 
-      if (gridDrawingSetting != null) {
-        final gridPaint = Paint()
-          ..color = gridDrawingSetting.gridColor
-          ..strokeWidth = gridDrawingSetting.strokeWidth;
-
-        if (gridDrawingSetting.drawXAxisGrid) {
-          for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
-            canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
-          }
+      if (gridDrawingSetting.drawXAxisGrid) {
+        for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
+          canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
         }
-        if (gridDrawingSetting.drawYAxisGrid) {
-          for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
-            canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
-          }
+      }
+      if (gridDrawingSetting.drawYAxisGrid) {
+        for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
+          canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
         }
       }
     }
