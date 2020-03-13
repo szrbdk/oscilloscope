@@ -294,6 +294,32 @@ class _TracePainter extends CustomPainter {
     // only start plot if dataset has data
     int length = dataSet.length;
 
+    //If GRid Drawing is enabled
+    if (gridDrawingSetting != null) {
+      final gridPaint = Paint()
+        ..color = gridDrawingSetting.gridColor
+        ..strokeWidth = gridDrawingSetting.strokeWidth;
+
+      if (gridDrawingSetting.drawXAxisGrid) {
+        for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
+          canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
+        }
+      }
+      if (gridDrawingSetting.drawYAxisGrid) {
+        for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
+          canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
+        }
+      }
+    }
+
+    // if yAxis required draw it here
+    if (showYAxis) {
+      double centerPoint = size.height - (0.0 - yMin) * yScale;
+      Offset yStart = Offset(0.0, centerPoint);
+      Offset yEnd = Offset(size.width, centerPoint);
+      canvas.drawLine(yStart, yEnd, axisPaint);
+    }
+
     if (length > 0) {
       // transform data set to just what we need if bigger than the width(otherwise this would be a memory hog)
       if (!isScrollable) {
@@ -320,30 +346,6 @@ class _TracePainter extends CustomPainter {
 
       // display the trace
       canvas.drawPath(trace, tracePaint);
-
-      // if yAxis required draw it here
-      if (showYAxis) {
-        double centerPoint = size.height - (0.0 - yMin) * yScale;
-        Offset yStart = Offset(0.0, centerPoint);
-        Offset yEnd = Offset(size.width, centerPoint);
-        canvas.drawLine(yStart, yEnd, axisPaint);
-      }
-    }
-    if (gridDrawingSetting != null) {
-      final gridPaint = Paint()
-        ..color = gridDrawingSetting.gridColor
-        ..strokeWidth = gridDrawingSetting.strokeWidth;
-
-      if (gridDrawingSetting.drawXAxisGrid) {
-        for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
-          canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
-        }
-      }
-      if (gridDrawingSetting.drawYAxisGrid) {
-        for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
-          canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
-        }
-      }
     }
   }
 
