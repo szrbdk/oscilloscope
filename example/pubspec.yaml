@@ -16,9 +16,12 @@ dependencies:
   flutter:
     sdk: flutter
 
+  bit_array: ^2.0.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^0.1.2
+
+
 
 dev_dependencies:
 
@@ -32,11 +35,18 @@ dev_dependencies:
 # For information on the generic Dart part of this file, see the
 # following page: https://www.dartlang.org/tools/pub/pubspec
 
+
 # The following section is specific to Flutter.
 flutter:
-
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - assets/ecg24h1.dat
+    - assets/ecgdata24h2.dat
+    - assets/ecgdata24h3.dat
+    - assets/RKeXECG.dat
+    - assets/RKeXECG2.dat
+    - assets/RKeXECG3.dat

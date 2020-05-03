@@ -43,6 +43,7 @@ class Oscilloscope extends StatefulWidget {
   final bool isAdaptiveRange;
   final bool willNormalizeData;
   final GridDrawingSetting gridDrawingSetting;
+  final double strokeWidth;
 
   Oscilloscope(
       {this.traceColor = Colors.white,
@@ -58,7 +59,9 @@ class Oscilloscope extends StatefulWidget {
         this.isAdaptiveRange = false,
         this.willNormalizeData = false,
         this.gridDrawingSetting,
-        @required this.dataSet});
+        this.strokeWidth = 2.0,
+        @required this.dataSet
+      });
 
   @override
   _OscilloscopeState createState() => _OscilloscopeState();
@@ -155,7 +158,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
                       yRange: yRange,
                       xScale: widget.xScale * xZoomFactor,
                       isScrollable: widget.isScrollable,
-                      gridDrawingSetting: widget.gridDrawingSetting
+                      gridDrawingSetting: widget.gridDrawingSetting,
+                      strokeWidth: widget.strokeWidth
                   ),
                 ),
               ),
@@ -267,6 +271,8 @@ class _TracePainter extends CustomPainter {
   final double yRange;
   final bool isScrollable;
   final GridDrawingSetting gridDrawingSetting;
+  final double strokeWidth;
+
   _TracePainter(
       {this.showYAxis,
         this.yAxisColor,
@@ -276,14 +282,15 @@ class _TracePainter extends CustomPainter {
         this.xScale = 1.0,
         this.traceColor = Colors.white,
         this.isScrollable = false,
-        this.gridDrawingSetting
+        this.gridDrawingSetting,
+        this.strokeWidth = 2.0
       });
 
   @override
   void paint(Canvas canvas, Size size) {
     final tracePaint = Paint()
       ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = 2.0
+      ..strokeWidth = strokeWidth
       ..color = traceColor
       ..style = PaintingStyle.stroke;
 

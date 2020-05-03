@@ -1,8 +1,13 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:bit_array/bit_array.dart';
+
 /// Demo of using the oscilloscope package
 ///
 /// In this demo 2 displays are generated showing the outputs for Sine & Cosine
 /// The scope displays will show the data sets  which will fill the yAxis and then the screen display will 'scroll'
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:oscilloscope/oscilloscope.dart';
 import 'dart:math';
 import 'dart:async';
@@ -34,36 +39,124 @@ class _ShellState extends State<Shell> {
 
   var heightScale = 1.0;
 
-//  ScrollController _scrollController = ScrollController(keepScrollOffset: true);
-  /// method to generate a Test  Wave Pattern Sets
-  /// this gives us a value between +1  & -1 for sine & cosine
-  _generateTrace(Timer t) {
-    // generate our  values
-//    var sv = sin((radians * pi));
-    var sv = Random().nextDouble()*(Random().nextDouble()*100) * (Random().nextBool() ? 1 : -1);
-    if (DateTime.now().second == 30 || DateTime.now().second == 0) {
-      isNegative = !isNegative;
-    }
-    var cv = 5 * (isNegative ? 1 : -1);
+  List<double> ecgData = List();
+  List<double> ecgBuffer = List();
+  List<double> ecgPreviewData = List();
+  double ecgMin = -1;
+  double ecgMax = 1;
+  double currentProgress = 0.0;
+  double width = 0.0;
+  Timer playTimer;
 
-    // Add to the growing dataset
-    setState(() {
-      traceSine.add(sv);
-      traceCosine.add(cv.toDouble());
-    });
-
-    // adjust to recyle the radian value ( as 0 = 2Pi RADS)
-    radians += 0.05;
-    if (radians >= 2.0) {
-      radians = 0.0;
-    }
-  }
 
   @override
   initState() {
     super.initState();
-    // create our timer to generate test values
-    _timer = Timer.periodic(Duration(milliseconds: 128), _generateTrace);
+  }
+
+  void loadECGData() async{
+    print("Loading Data");
+    ByteData byteData = await rootBundle.load("assets/RKeXECG3.dat");
+    Uint8List list = byteData.buffer.asUint8List();
+    List<double> values = [];
+
+    double accuracy = 2.656399965286255;
+    double last;
+    int du1 = 21.252 ~/ accuracy;
+    int du2 = 15.9384 ~/ accuracy;
+    int offset = 0;
+    int step = 12;
+
+    bool isLeadBit = false;
+    int dataBitCounter = 0;
+    int bitCounter = 0;
+    List<double> valueBuffer = [];
+
+    int packageCounter = 0;
+    Int8List data = Int8List(12);
+    for(int i = 0;i<list.length;i++){
+      if (packageCounter < 12) {
+        data[packageCounter] = list[i];
+        packageCounter++;
+      }else{
+        int i1 = data[0] & 255;
+        int i2 = (data[1] & 15) << 8;
+        values.add(((i1|i2)&4095).toDouble() - 2048);
+        i1 = (data[1] & 240) >> 4;
+        i2 = (data[2] & 255) << 4;
+        values.add(((i1|i2)&4095).toDouble() - 2048);
+        i1 = data[3] & 255;
+        i2 = (data[4] & 15) << 8;
+        values.add(((i1|i2)&4095).toDouble() - 2048);
+        i1 = (data[4] & 240) >> 4;
+        i2 = (data[5] & 255) << 4;
+        values.add(((i1|i2)&4095).toDouble() - 2048);
+        if (12 < data.length) {
+          i1 = data[6] & 255;
+          i2 = (data[7] & 15) << 8;
+          values.add(((i1|i2)&4095).toDouble() - 2048);
+          i1 = (data[7] & 240) >> 4;
+          i2 = (data[8] & 255) << 4;
+          values.add(((i1|i2)&4095).toDouble() - 2048);
+          i1 = data[9] & 255;
+          i2 = (data[10] & 15) << 8;
+          values.add(((i1|i2)&4095).toDouble() - 2048);
+          i1 = (data[10] & 240) >> 4;
+          i2 = (data[11] & 255) << 4;
+          values.add(((i1|i2)&4095).toDouble());
+        }
+        packageCounter = 0;
+      }
+    }
+
+    ecgMin = values.reduce(min);
+    ecgMax = values.reduce(max);
+
+    List<double> fixedEcgValues = [];
+    ecgPreviewData = [];
+    int stepCount = 0;
+    int previewSteps = values.length ~/ width;
+    values.forEach((temp){
+      double value = temp;
+      if (last == null) {
+        last = value;
+      }
+      if((value - last).abs() <= du1){
+        value = (value + last * 3) / 4;
+      }else if (value - last > du1) {
+        value = (value - du2);
+      }else{
+        value = value + du2;
+      }
+      fixedEcgValues.add(value);
+      last = temp;
+      if (stepCount%previewSteps == 0) {
+        ecgPreviewData.add(value);
+      }
+      stepCount++;
+    });
+
+    setState(() {
+      currentProgress = 0;
+      ecgData = fixedEcgValues;
+    });
+    print("Done converting: ${values.length} - $ecgMax");
+
+  }
+
+  void loadDataForCurrentProgress(double progress){
+    print("Val: ${((((currentProgress/ecgData.length)*ecgPreviewData.length))/ecgPreviewData.length)* (MediaQuery.of(context).size.width)}");
+    setState(() {
+      currentProgress = progress;
+      int end = (progress+width).toInt();
+      int start = progress.toInt();
+      if (end > ecgData.length) {
+        end = ecgData.length;
+        start = ecgData.length - width.toInt();
+      }
+      ecgBuffer = ecgData.sublist(start,end);
+      print("${ecgBuffer}");
+    });
   }
 
   @override
@@ -76,108 +169,142 @@ class _ShellState extends State<Shell> {
 
   @override
   Widget build(BuildContext context) {
-    // Create A Scope Display for Sine
-    Widget scopeOne = Oscilloscope(
-      showYAxis: true,
-      yAxisColor: Colors.orange,
-      padding: 20.0,
-      backgroundColor: Colors.white,
-      traceColor: Colors.black,
-      yAxisMax: 1000*heightScale,
-      yAxisMin: -1000*heightScale,
-      xScale: 5.0,
-      dataSet: traceSine,
-      isScrollable: false,
-      isZoomable: true,
-      gridDrawingSetting: GridDrawingSetting(
-          true,true, 
-          xAxisGridSpace: 10,
-          yAxisGridSpace: 10,
-          gridColor: Colors.black26.withAlpha(50)
-      ),
-    );
-//    Widget scopeOne = GestureDetector(
-//      onScaleStart: (state){
-//        prevScale = heightScale;
-//      },
-//      onScaleUpdate: (state){
-//        print("Scale State: ${state.verticalScale}");
-//        setState(() {
-//          heightScale = prevScale * state.scale;
-//        });
-//      },
-//      onScaleEnd: (_){
-//        prevScale = null;
-//      },
-//      child: Oscilloscope(
-//        showYAxis: true,
-//        yAxisColor: Colors.orange,
-//        padding: 20.0,
-//        backgroundColor: Colors.white,
-//        traceColor: Colors.black,
-//        yAxisMax: 1000*heightScale,
-//        yAxisMin: -1000*heightScale,
-//        xScale: 5.0,
-//        dataSet: traceSine,
-//        isScrollable: true,
-//      ),
-//    );
-
-    // Create A Scope Display for Cosine
-    Oscilloscope scopeTwo = Oscilloscope(
-      showYAxis: true,
-      padding: 20.0,
-      backgroundColor: Colors.black,
-      traceColor: Colors.yellow,
-      yAxisMax: 10.0,
-      yAxisMin: -10.0,
-      xScale: 5.0,
-      dataSet: traceCosine,
-      isZoomable: true,
-    );
-
+    width = MediaQuery.of(context).size.width;
     // Generate the Scaffold
     return Scaffold(
       appBar: AppBar(
         title: Text("OscilloScope Demo"),
         actions: <Widget>[
           IconButton(
-            icon: Icon(Icons.add),
-            onPressed: (){
-              setState(() {
-                heightScale = heightScale + 0.1;
-              });
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.minimize),
-            onPressed: (){
-              setState(() {
-                heightScale = heightScale - 0.1;
-              });
-            },
+            icon: Icon(Icons.sync),
+            onPressed: loadECGData,
           )
         ],
       ),
       body:
+      SafeArea(
+        child: Column(
+          children: <Widget>[
+            Expanded(
+              child: Oscilloscope(
+                showYAxis: false,
+                yAxisColor: Colors.lightBlue,
+                padding: 0.0,
+                backgroundColor: Colors.white60,
+                traceColor: Colors.black,
+                yAxisMax: ecgMax,
+                yAxisMin: ecgMin,
+                xScale: 1,
+                dataSet: ecgBuffer,
+                isZoomable: true,
+                isScrollable: false,
+                strokeWidth: 1,
+                gridDrawingSetting: GridDrawingSetting(
+                  true, //X Ekseni Gridini Göster
+                  true, //Y Ekseni Gridini göster
+                  gridColor: Color(0xfff2a88d), //Opsiyonel - Grid Rengi
+                  yAxisGridSpace: 5, //X Ekseni Grid Aralığı
+                  xAxisGridSpace:  5, //Y Ekseni Grid Aralığı
+                  strokeWidth: 0.5,
+                ),
+              ),
+            ),
+            Stack(
+              children: [
+                Positioned(
+                  left:((((currentProgress/ecgData.length)*ecgPreviewData.length))/ecgPreviewData.length)* (MediaQuery.of(context).size.width),
+                  child: Container(
+                    height: 50,
+                    width: 1,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(
+                  height: 44,
+                  child: Oscilloscope(
+                    showYAxis: false,
+                    yAxisColor: Colors.lightBlue,
+                    padding: 0.0,
+                    backgroundColor: Colors.white60,
+                    traceColor: Colors.black.withAlpha(100),
+                    yAxisMax: ecgMax,
+                    yAxisMin: ecgMin,
+                    xScale: 1,
+                    dataSet: ecgPreviewData,
+                    isZoomable: false,
+                    isScrollable: true,
+                    strokeWidth: 0.5,
+                    gridDrawingSetting: GridDrawingSetting(
+                      true, //X Ekseni Gridini Göster
+                      true, //Y Ekseni Gridini göster
+                      gridColor: Color(0xfff2a88d).withAlpha(100), //Opsiyonel - Grid Rengi
+                      yAxisGridSpace: 2, //X Ekseni Grid Aralığı
+                      xAxisGridSpace:  2, //Y Ekseni Grid Aralığı
+                      strokeWidth: 0.25,
+                    ),
+                  ),
+                ),
 
-      Column(
-        children: <Widget>[
-          Expanded(flex: 1, child: scopeOne),
-//          Expanded(
-//            flex: 1,
-//            child: scopeTwo,
-//          ),
-        ],
-      ),
+              ],
+            ),
+            Row(
+              children: <Widget>[
+                IconButton(
+                  icon: Icon(playTimer != null ? Icons.pause : Icons.play_arrow),
+                  onPressed: (){
+                    if (playTimer != null) {
+                      playTimer.cancel();
+                      playTimer = null;
+                      setState(() {
+
+                      });
+                    }else{
+                      playTimer = Timer.periodic(Duration(milliseconds: 25), (timer){
+                        setState(() {
+                          currentProgress = currentProgress + 1;
+                          if (currentProgress >= ecgData.length) {
+                            currentProgress = 0;
+                            print("Zero set");
+                          }
+                          loadDataForCurrentProgress(currentProgress);
+                        });
+                      });
+                    }
+                  },
+                ),
+                Expanded(
+                  child: Slider(
+                    max: ecgData.length.toDouble(),
+                    min: 0,
+                    value: currentProgress,
+                    onChanged: loadDataForCurrentProgress,
+                  ),
+                )
+              ],
+            )
+          ],
+        ),
+      )
+//
+//      Column(
+//        children: <Widget>[
+//
+//          Expanded(flex: 1, child: scopeOne),
+////          Expanded(
+////            flex: 1,
+////            child: scopeTwo,
+////          ),
+//        ],
+//      ),
     );
   }
-  double getWidth(BuildContext context){
-    double minWidth = MediaQuery.of(context).size.width; 
+
+//  double getWidth(BuildContext context){
+//    double minWidth = MediaQuery.of(context).size.width;
 //    if (traceSine.length <= minWidth) {
 //      return minWidth;
 //    }else{
-      return traceSine.length.toDouble()*5.0;
+//      return traceSine.length.toDouble()*5.0;
 //    }
-  }
+//  }
 }
