@@ -252,7 +252,6 @@ class _OscilloscopeState extends State<Oscilloscope> {
       return width;
     }
     double calculatedWidth = widget.dataSet.length.toDouble()*widget.xScale*xZoomFactor;
-    print("${calculatedWidth} MediaQuery Width: ${mediaQueryWidth}");
     if (calculatedWidth <= mediaQueryWidth) {
       calculatedWidth = mediaQueryWidth;
     }

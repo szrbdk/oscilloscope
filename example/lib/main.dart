@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:bit_array/bit_array.dart';
 
 /// Demo of using the oscilloscope package
 ///
@@ -11,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:oscilloscope/oscilloscope.dart';
 import 'dart:math';
 import 'dart:async';
+
 
 void main() => runApp(new MyApp());
 
@@ -54,9 +53,11 @@ class _ShellState extends State<Shell> {
     super.initState();
   }
 
+
   void loadECGData() async{
     print("Loading Data");
-    ByteData byteData = await rootBundle.load("assets/RKeXECG3.dat");
+//    ByteData byteData = await rootBundle.load("assets/adroid_14min.dat");
+    ByteData byteData = await rootBundle.load("assets/ios_14min.dat");
     Uint8List list = byteData.buffer.asUint8List();
     List<double> values = [];
 
@@ -109,6 +110,7 @@ class _ShellState extends State<Shell> {
       }
     }
 
+    print("VALUE COUNT: ${values.length}");
     ecgMin = values.reduce(min);
     ecgMax = values.reduce(max);
 
@@ -145,7 +147,7 @@ class _ShellState extends State<Shell> {
   }
 
   void loadDataForCurrentProgress(double progress){
-    print("Val: ${((((currentProgress/ecgData.length)*ecgPreviewData.length))/ecgPreviewData.length)* (MediaQuery.of(context).size.width)}");
+    //print("Val: ${((((currentProgress/ecgData.length)*ecgPreviewData.length))/ecgPreviewData.length)* (MediaQuery.of(context).size.width)}");
     setState(() {
       currentProgress = progress;
       int end = (progress+width).toInt();
@@ -155,7 +157,7 @@ class _ShellState extends State<Shell> {
         start = ecgData.length - width.toInt();
       }
       ecgBuffer = ecgData.sublist(start,end);
-      print("${ecgBuffer}");
+      //print("${ecgBuffer}");
     });
   }
 
@@ -259,7 +261,7 @@ class _ShellState extends State<Shell> {
 
                       });
                     }else{
-                      playTimer = Timer.periodic(Duration(milliseconds: 25), (timer){
+                      playTimer = Timer.periodic(Duration(milliseconds: 10), (timer){
                         setState(() {
                           currentProgress = currentProgress + 1;
                           if (currentProgress >= ecgData.length) {
