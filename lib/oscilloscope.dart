@@ -44,6 +44,7 @@ class Oscilloscope extends StatefulWidget {
   final bool willNormalizeData;
   final GridDrawingSetting gridDrawingSetting;
   final double strokeWidth;
+  Function(double x, double y) onScaleChange;
 
   Oscilloscope(
       {this.traceColor = Colors.white,
@@ -60,7 +61,8 @@ class Oscilloscope extends StatefulWidget {
         this.willNormalizeData = false,
         this.gridDrawingSetting,
         this.strokeWidth = 2.0,
-        @required this.dataSet
+        @required this.dataSet,
+        this.onScaleChange
       });
 
   @override
@@ -105,6 +107,13 @@ class _OscilloscopeState extends State<Oscilloscope> {
     }
   }
 
+  void notifyScaleChangeIfNeeded(){
+    if(widget.onScaleChange == null){
+      return;
+    }
+    widget.onScaleChange(xZoomFactor,yZoomFactor);
+  }
+
   @override
   Widget build(BuildContext context) {
     scrollToEndIfNeeded(context);
@@ -116,6 +125,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
           setState(() {
             yZoomFactor = yZoomFactor + ((details.primaryDelta >= 0) ? 0.05 : -0.05);
           });
+          notifyScaleChangeIfNeeded();
         }
       },
       onScaleStart: (state){
@@ -128,6 +138,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
             xZoomFactor = prevXValue * state.horizontalScale;
 //            yZoomFactor = prevYValue * state.verticalScale;
           });
+          notifyScaleChangeIfNeeded();
         }
       },
       onScaleEnd: (_){
@@ -175,6 +186,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
                 setState(() {
                   yZoomFactor = 1.0;
                   xZoomFactor = 1.0;
+                  notifyScaleChangeIfNeeded();
                 });
               },
             ) : Container(),
