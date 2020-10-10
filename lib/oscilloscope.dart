@@ -42,6 +42,7 @@ class Oscilloscope extends StatefulWidget {
   final bool isAdaptiveRange;
   final bool willNormalizeData;
   final GridDrawingSetting gridDrawingSetting;
+  final ReverseSetting reverseSetting;
   final double strokeWidth;
   final Function(double x, double y) onScaleChange;
 
@@ -60,6 +61,7 @@ class Oscilloscope extends StatefulWidget {
     this.willNormalizeData = false,
     this.gridDrawingSetting,
     this.strokeWidth = 2.0,
+    this.reverseSetting,
     @required this.dataSet,
     this.onScaleChange,
   });
@@ -86,6 +88,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   GlobalKey _widgetKey = GlobalKey();
 
+  bool reverse;
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -95,6 +99,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
   @override
   void initState() {
     super.initState();
+    reverse = widget.reverseSetting?.initialReversed ?? false;
     if (widget.willNormalizeData) {
       yMax = 1;
       yMin = 0;
@@ -112,6 +117,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
     }
     widget.onScaleChange(xZoomFactor, yZoomFactor);
   }
+
+  bool get isReversable => widget.reverseSetting?.reversable == true;
 
   @override
   Widget build(BuildContext context) {
@@ -196,7 +203,22 @@ class _OscilloscopeState extends State<Oscilloscope> {
                     },
                   )
                 : Container(),
-          )
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: isReversable
+                ? IconButton(
+                    icon: Icon(widget.reverseSetting.icon),
+                    onPressed: () {
+                      setState(() {
+                        reverse = !reverse;
+                        normalizeDataIfNeeded();
+                      });
+                    },
+                  )
+                : Container(),
+          ),
         ],
       ),
     );
@@ -204,9 +226,21 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   void normalizeDataIfNeeded() {
     if (widget.willNormalizeData) {
-      normaliedDataSet = getNormalizedData(widget.dataSet);
+      normaliedDataSet = reverseData(getNormalizedData(widget.dataSet));
     } else {
-      normaliedDataSet = widget.dataSet;
+      normaliedDataSet = reverseData(widget.dataSet);
+    }
+  }
+
+  List<double> reverseData(List<double> dataSet) {
+    if (reverse && dataSet.length > 0) {
+      List<double> dataArray = [];
+      dataSet.forEach((element) {
+        dataArray.add(element * (-1));
+      });
+      return dataArray;
+    } else {
+      return dataSet;
     }
   }
 
@@ -401,5 +435,16 @@ class GridDrawingSetting {
     this.yAxisGridSpace = 10,
     this.gridColor = Colors.grey,
     this.strokeWidth = 0.5,
+  });
+}
+
+class ReverseSetting {
+  final bool reversable;
+  final IconData icon;
+  final bool initialReversed;
+  ReverseSetting({
+    this.reversable = false,
+    this.icon = Icons.import_export,
+    this.initialReversed = false,
   });
 }
