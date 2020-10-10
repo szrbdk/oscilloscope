@@ -3,11 +3,10 @@
 library oscilloscope;
 
 import 'dart:math' as Math;
-import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'dart:math';
+
 /// A widget that defines a customisable Oscilloscope type display that can be used to graph out data
 ///
 /// The [dataSet] arguments MUST be a List<double> -  this is the data that is used by the display to generate a trace
@@ -44,26 +43,26 @@ class Oscilloscope extends StatefulWidget {
   final bool willNormalizeData;
   final GridDrawingSetting gridDrawingSetting;
   final double strokeWidth;
-  Function(double x, double y) onScaleChange;
+  final Function(double x, double y) onScaleChange;
 
-  Oscilloscope(
-      {this.traceColor = Colors.white,
-        this.backgroundColor = Colors.black,
-        this.yAxisColor = Colors.white,
-        this.padding = 10.0,
-        this.yAxisMax = 1.0,
-        this.yAxisMin = 0.0,
-        this.showYAxis = false,
-        this.xScale = 1.0,
-        this.isScrollable = false,
-        this.isZoomable = false,
-        this.isAdaptiveRange = false,
-        this.willNormalizeData = false,
-        this.gridDrawingSetting,
-        this.strokeWidth = 2.0,
-        @required this.dataSet,
-        this.onScaleChange
-      });
+  Oscilloscope({
+    this.traceColor = Colors.white,
+    this.backgroundColor = Colors.black,
+    this.yAxisColor = Colors.white,
+    this.padding = 10.0,
+    this.yAxisMax = 1.0,
+    this.yAxisMin = 0.0,
+    this.showYAxis = false,
+    this.xScale = 1.0,
+    this.isScrollable = false,
+    this.isZoomable = false,
+    this.isAdaptiveRange = false,
+    this.willNormalizeData = false,
+    this.gridDrawingSetting,
+    this.strokeWidth = 2.0,
+    @required this.dataSet,
+    this.onScaleChange,
+  });
 
   @override
   _OscilloscopeState createState() => _OscilloscopeState();
@@ -100,18 +99,18 @@ class _OscilloscopeState extends State<Oscilloscope> {
       yMax = 1;
       yMin = 0;
       yRange = 1;
-    }else{
+    } else {
       yMax = widget.yAxisMax;
       yMin = widget.yAxisMin;
       yRange = yMax - yMin;
     }
   }
 
-  void notifyScaleChangeIfNeeded(){
-    if(widget.onScaleChange == null){
+  void notifyScaleChangeIfNeeded() {
+    if (widget.onScaleChange == null) {
       return;
     }
-    widget.onScaleChange(xZoomFactor,yZoomFactor);
+    widget.onScaleChange(xZoomFactor, yZoomFactor);
   }
 
   @override
@@ -120,47 +119,49 @@ class _OscilloscopeState extends State<Oscilloscope> {
     normalizeDataIfNeeded();
     updateYRangeIfNeeded();
     return GestureDetector(
-      onVerticalDragUpdate: (details){
+      onVerticalDragUpdate: (details) {
         if (widget.isZoomable) {
           setState(() {
-            yZoomFactor = yZoomFactor + ((details.primaryDelta >= 0) ? 0.05 : -0.05);
+            yZoomFactor =
+                yZoomFactor + ((details.primaryDelta >= 0) ? 0.05 : -0.05);
           });
           notifyScaleChangeIfNeeded();
         }
       },
-      onScaleStart: (state){
+      onScaleStart: (state) {
         prevXValue = xZoomFactor;
-//        prevYValue = yZoomFactor;
+        // prevYValue = yZoomFactor;
       },
-      onScaleUpdate: (state){
+      onScaleUpdate: (state) {
         if (widget.isZoomable) {
           setState(() {
             xZoomFactor = prevXValue * state.horizontalScale;
-//            yZoomFactor = prevYValue * state.verticalScale;
+            // yZoomFactor = prevYValue * state.verticalScale;
           });
           notifyScaleChangeIfNeeded();
         }
       },
-      onScaleEnd: (_){
+      onScaleEnd: (_) {
         prevXValue = null;
         prevYValue = null;
       },
       child: Stack(
-        children: <Widget>[SingleChildScrollView(
-          key: _widgetKey,
-          physics: ClampingScrollPhysics(),
-          controller: _scrollController,
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: getWidth(context),
-            child: Container(
-              padding: EdgeInsets.all(widget.padding),
-              width: double.infinity,
-              height: double.infinity,
-              color: widget.backgroundColor,
-              child: ClipRect(
-                child: CustomPaint(
-                  painter: _TracePainter(
+        children: <Widget>[
+          SingleChildScrollView(
+            key: _widgetKey,
+            physics: ClampingScrollPhysics(),
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: getWidth(context),
+              child: Container(
+                padding: EdgeInsets.all(widget.padding),
+                width: double.infinity,
+                height: double.infinity,
+                color: widget.backgroundColor,
+                child: ClipRect(
+                  child: CustomPaint(
+                    painter: _TracePainter(
                       showYAxis: widget.showYAxis,
                       yAxisColor: widget.yAxisColor,
                       dataSet: normaliedDataSet,
@@ -170,91 +171,99 @@ class _OscilloscopeState extends State<Oscilloscope> {
                       xScale: widget.xScale * xZoomFactor,
                       isScrollable: widget.isScrollable,
                       gridDrawingSetting: widget.gridDrawingSetting,
-                      strokeWidth: widget.strokeWidth
+                      strokeWidth: widget.strokeWidth,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
           Positioned(
             bottom: 0,
             left: 0,
-            child: (yZoomFactor != 1.0 || xZoomFactor != 1.0) ? IconButton(
-              icon: Icon(Icons.refresh, color: widget.traceColor,),
-              onPressed: (){
-                setState(() {
-                  yZoomFactor = 1.0;
-                  xZoomFactor = 1.0;
-                  notifyScaleChangeIfNeeded();
-                });
-              },
-            ) : Container(),
+            child: (yZoomFactor != 1.0 || xZoomFactor != 1.0)
+                ? IconButton(
+                    icon: Icon(
+                      Icons.refresh,
+                      color: widget.traceColor,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        yZoomFactor = 1.0;
+                        xZoomFactor = 1.0;
+                        notifyScaleChangeIfNeeded();
+                      });
+                    },
+                  )
+                : Container(),
           )
         ],
       ),
     );
   }
 
-  void normalizeDataIfNeeded(){
+  void normalizeDataIfNeeded() {
     if (widget.willNormalizeData) {
       normaliedDataSet = getNormalizedData(widget.dataSet);
-    }else{
+    } else {
       normaliedDataSet = widget.dataSet;
     }
   }
 
-  List<double> getNormalizedData(List<double> dataSet){
+  List<double> getNormalizedData(List<double> dataSet) {
     if (dataSet.length > 0) {
       List<double> dataArray = [];
-      double min =  dataSet.reduce(Math.min);
-      double max =  dataSet.reduce(Math.max);
-      for(int i = 0;i<dataSet.length;i++){
+      double min = dataSet.reduce(Math.min);
+      double max = dataSet.reduce(Math.max);
+      for (int i = 0; i < dataSet.length; i++) {
         if (max == min) {
           dataArray.add(0.5);
-        }else{
-          double normalized = (dataSet[i] - min) / (max-min);
+        } else {
+          double normalized = (dataSet[i] - min) / (max - min);
           dataArray.add(normalized);
         }
       }
       return dataArray;
-    }else{
+    } else {
       return [];
     }
   }
 
-  void updateYRangeIfNeeded(){
+  void updateYRangeIfNeeded() {
     if (widget.isAdaptiveRange && normaliedDataSet.length > 0) {
       yMin = normaliedDataSet.reduce(Math.min) * 1.1;
       yMax = normaliedDataSet.reduce(Math.max) * 1.1;
-    }else{
+    } else {
       yMin = widget.yAxisMin;
       yMax = widget.yAxisMax;
     }
     yMin = yMin;
     yMax = yMax;
-    yRange = (yMax - yMin)*yZoomFactor;
+    yRange = (yMax - yMin) * yZoomFactor;
   }
 
-  void scrollToEndIfNeeded(BuildContext context){
+  void scrollToEndIfNeeded(BuildContext context) {
     if (!widget.isScrollable || context == null) {
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      try{
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
         double width = MediaQuery.of(context).size.width;
-        if (widget.dataSet.length*widget.xScale > width) {
-          if (!_scrollController.position.isScrollingNotifier.value && _scrollController.offset > _scrollController.position.maxScrollExtent - 100 ) {
-            _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        if (widget.dataSet.length * widget.xScale > width) {
+          if (!_scrollController.position.isScrollingNotifier.value &&
+              _scrollController.offset >
+                  _scrollController.position.maxScrollExtent - 100) {
+            _scrollController
+                .jumpTo(_scrollController.position.maxScrollExtent);
           }
         }
-      }catch(exception){
+      } catch (exception) {
         print("Got Error from osciloscope: $exception");
       }
     });
   }
 
-  double getWidth(BuildContext context){
+  double getWidth(BuildContext context) {
     double mediaQueryWidth = MediaQuery.of(context).size.width;
     double width = mediaQueryWidth * xZoomFactor;
     if (!widget.isScrollable) {
@@ -263,7 +272,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
     if (widget.dataSet.length == 0) {
       return width;
     }
-    double calculatedWidth = widget.dataSet.length.toDouble()*widget.xScale*xZoomFactor;
+    double calculatedWidth =
+        widget.dataSet.length.toDouble() * widget.xScale * xZoomFactor;
     if (calculatedWidth <= mediaQueryWidth) {
       calculatedWidth = mediaQueryWidth;
     }
@@ -284,18 +294,18 @@ class _TracePainter extends CustomPainter {
   final GridDrawingSetting gridDrawingSetting;
   final double strokeWidth;
 
-  _TracePainter(
-      {this.showYAxis,
-        this.yAxisColor,
-        this.yRange,
-        this.yMin,
-        this.dataSet,
-        this.xScale = 1.0,
-        this.traceColor = Colors.white,
-        this.isScrollable = false,
-        this.gridDrawingSetting,
-        this.strokeWidth = 2.0
-      });
+  _TracePainter({
+    this.showYAxis,
+    this.yAxisColor,
+    this.yRange,
+    this.yMin,
+    this.dataSet,
+    this.xScale = 1.0,
+    this.traceColor = Colors.white,
+    this.isScrollable = false,
+    this.gridDrawingSetting,
+    this.strokeWidth = 2.0,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -320,13 +330,19 @@ class _TracePainter extends CustomPainter {
         ..strokeWidth = gridDrawingSetting.strokeWidth;
 
       if (gridDrawingSetting.drawXAxisGrid) {
-        for (int i = 0;i<size.height;i = i + gridDrawingSetting.xAxisGridSpace){
-          canvas.drawLine(Offset(0,i.toDouble()), Offset(size.width,i.toDouble()), gridPaint);
+        for (int i = 0;
+            i < size.height;
+            i = i + gridDrawingSetting.xAxisGridSpace) {
+          canvas.drawLine(Offset(0, i.toDouble()),
+              Offset(size.width, i.toDouble()), gridPaint);
         }
       }
       if (gridDrawingSetting.drawYAxisGrid) {
-        for (int i = 0;i<size.width;i = i + gridDrawingSetting.yAxisGridSpace){
-          canvas.drawLine(Offset(i.toDouble(),0), Offset(i.toDouble(),size.height), gridPaint);
+        for (int i = 0;
+            i < size.width;
+            i = i + gridDrawingSetting.yAxisGridSpace) {
+          canvas.drawLine(Offset(i.toDouble(), 0),
+              Offset(i.toDouble(), size.height), gridPaint);
         }
       }
     }
@@ -349,7 +365,6 @@ class _TracePainter extends CustomPainter {
         }
       }
 
-
       // Create Path and set Origin to first data point
       Path trace = Path();
       trace.moveTo(0.0, size.height - (dataSet[0].toDouble() - yMin) * yScale);
@@ -358,8 +373,7 @@ class _TracePainter extends CustomPainter {
       for (int p = 0; p < length; p++) {
         double plotPoint =
             size.height - ((dataSet[p].toDouble() - yMin) * yScale);
-        if (p == 0) {
-        }
+        if (p == 0) {}
         trace.lineTo(p.toDouble() * (xScale), plotPoint);
       }
 
@@ -372,7 +386,7 @@ class _TracePainter extends CustomPainter {
   bool shouldRepaint(_TracePainter old) => true;
 }
 
-class GridDrawingSetting{
+class GridDrawingSetting {
   final bool drawXAxisGrid;
   final bool drawYAxisGrid;
   final int xAxisGridSpace;
@@ -380,6 +394,12 @@ class GridDrawingSetting{
   final Color gridColor;
   final double strokeWidth;
 
-  GridDrawingSetting(this.drawXAxisGrid, this.drawYAxisGrid,
-      {this.xAxisGridSpace = 10, this.yAxisGridSpace = 10,this.gridColor = Colors.grey,this.strokeWidth = 0.5});
+  GridDrawingSetting(
+    this.drawXAxisGrid,
+    this.drawYAxisGrid, {
+    this.xAxisGridSpace = 10,
+    this.yAxisGridSpace = 10,
+    this.gridColor = Colors.grey,
+    this.strokeWidth = 0.5,
+  });
 }
