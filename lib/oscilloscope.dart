@@ -34,26 +34,26 @@ class Oscilloscope extends StatefulWidget {
   final double padding;
   final Color backgroundColor;
   final Color traceColor;
-  final Color yAxisColor;
-  final bool showYAxis;
   final double xScale;
   final bool isScrollable;
   final bool isZoomable;
   final bool isAdaptiveRange;
   final bool willNormalizeData;
+  final double centerPoint;
+  final double strokeWidth;
+  final double dataMultiplier;
+  final double yScaleFactor;
+  final double yTranslateFactor;
   final GridDrawingSetting gridDrawingSetting;
   final ReverseSetting reverseSetting;
-  final double strokeWidth;
   final Function(double x, double y) onScaleChange;
 
   Oscilloscope({
     this.traceColor = Colors.white,
     this.backgroundColor = Colors.black,
-    this.yAxisColor = Colors.white,
     this.padding = 10.0,
     this.yAxisMax = 1.0,
     this.yAxisMin = 0.0,
-    this.showYAxis = false,
     this.xScale = 1.0,
     this.isScrollable = false,
     this.isZoomable = false,
@@ -62,8 +62,12 @@ class Oscilloscope extends StatefulWidget {
     this.gridDrawingSetting,
     this.strokeWidth = 2.0,
     this.reverseSetting,
+    this.dataMultiplier = 1.0,
     @required this.dataSet,
+    @required this.centerPoint,
     this.onScaleChange,
+    this.yScaleFactor = 0.03,
+    this.yTranslateFactor = 0.8,
   });
 
   @override
@@ -84,11 +88,18 @@ class _OscilloscopeState extends State<Oscilloscope> {
   double yMin;
   double yMax;
   List<double> normaliedDataSet;
-  ScrollController _scrollController = ScrollController(keepScrollOffset: true);
+  ScrollController _scrollController =
+      ScrollController(keepScrollOffset: true);
 
   GlobalKey _widgetKey = GlobalKey();
 
-  bool reverse;
+  bool reverse = false;
+  double yOffset = 0.0;
+  double centerPoint;
+
+  ReverseSetting get reverseSetting =>
+      widget.reverseSetting ?? ReverseSetting();
+  bool get isReversable => reverseSetting.reversable == true;
 
   @override
   void dispose() {
@@ -99,7 +110,10 @@ class _OscilloscopeState extends State<Oscilloscope> {
   @override
   void initState() {
     super.initState();
-    reverse = widget.reverseSetting?.initialReversed ?? false;
+    centerPoint = widget.centerPoint;
+    if (reverseSetting.initialReversed) {
+      notifyReverseChangeIfNeeded(false);
+    }
     if (widget.willNormalizeData) {
       yMax = 1;
       yMin = 0;
@@ -111,14 +125,34 @@ class _OscilloscopeState extends State<Oscilloscope> {
     }
   }
 
-  void notifyScaleChangeIfNeeded() {
-    if (widget.onScaleChange == null) {
-      return;
+  void notifyReverseChangeIfNeeded(bool notifyChange) {
+    double yMinTemp = yMin;
+    yMin = -yMax;
+    yMax = -yMinTemp;
+    centerPoint = -centerPoint;
+    reverse = !reverse;
+    if (notifyChange && reverseSetting.onReverseChange != null) {
+      reverseSetting.onReverseChange(reverse);
     }
-    widget.onScaleChange(xZoomFactor, yZoomFactor);
   }
 
-  bool get isReversable => widget.reverseSetting?.reversable == true;
+  void notifyScaleChangeIfNeeded() {
+    if (widget.onScaleChange != null) {
+      widget.onScaleChange(xZoomFactor, yZoomFactor);
+    }
+  }
+
+  Offset lastOffset;
+  bool yDeltaCheck(Offset off) {
+    bool delta;
+    if (((lastOffset?.dy ?? 0.0) - off.dy) != 0) {
+      delta = ((lastOffset?.dy ?? 0.0) - off.dy) > 0 ? true : false;
+    }
+    setState(() {
+      lastOffset = off;
+    });
+    return delta;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,24 +160,40 @@ class _OscilloscopeState extends State<Oscilloscope> {
     normalizeDataIfNeeded();
     updateYRangeIfNeeded();
     return GestureDetector(
+      onLongPressMoveUpdate: (details) {
+        setState(() {
+          bool delta = yDeltaCheck(details.offsetFromOrigin);
+          double tranlateValue = 0.0;
+          if (delta != null) {
+            tranlateValue = delta
+                ? widget.yTranslateFactor
+                : -widget.yTranslateFactor;
+          }
+          yOffset = yOffset + tranlateValue;
+        });
+        notifyScaleChangeIfNeeded();
+      },
       onVerticalDragUpdate: (details) {
         if (widget.isZoomable) {
           setState(() {
+            yZoomFactor = yZoomFactor +
+                ((details.primaryDelta >= 0)
+                    ? widget.yScaleFactor
+                    : -widget.yScaleFactor);
             yZoomFactor =
-                yZoomFactor + ((details.primaryDelta >= 0) ? 0.05 : -0.05);
+                yZoomFactor <= 0 ? widget.yScaleFactor : yZoomFactor;
           });
           notifyScaleChangeIfNeeded();
         }
       },
       onScaleStart: (state) {
         prevXValue = xZoomFactor;
-        // prevYValue = yZoomFactor;
       },
-      onScaleUpdate: (state) {
+      onScaleUpdate: (ScaleUpdateDetails state) {
         if (widget.isZoomable) {
           setState(() {
             xZoomFactor = prevXValue * state.horizontalScale;
-            // yZoomFactor = prevYValue * state.verticalScale;
+            if (xZoomFactor <= 0) xZoomFactor = 0.0000001;
           });
           notifyScaleChangeIfNeeded();
         }
@@ -169,16 +219,19 @@ class _OscilloscopeState extends State<Oscilloscope> {
                 child: ClipRect(
                   child: CustomPaint(
                     painter: _TracePainter(
-                      showYAxis: widget.showYAxis,
-                      yAxisColor: widget.yAxisColor,
                       dataSet: normaliedDataSet,
                       traceColor: widget.traceColor,
                       yMin: yMin,
+                      yMax: yMax,
                       yRange: yRange,
+                      centerValue: centerPoint,
                       xScale: widget.xScale * xZoomFactor,
                       isScrollable: widget.isScrollable,
                       gridDrawingSetting: widget.gridDrawingSetting,
                       strokeWidth: widget.strokeWidth,
+                      yOffsetValue: yOffset,
+                      yZoomFactor: yZoomFactor,
+                      multiplier: widget.dataMultiplier ?? 1.0,
                     ),
                   ),
                 ),
@@ -198,6 +251,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
                       setState(() {
                         yZoomFactor = 1.0;
                         xZoomFactor = 1.0;
+                        yOffset = 0.0;
                         notifyScaleChangeIfNeeded();
                       });
                     },
@@ -209,10 +263,10 @@ class _OscilloscopeState extends State<Oscilloscope> {
             right: 0,
             child: isReversable
                 ? IconButton(
-                    icon: Icon(widget.reverseSetting.icon),
+                    icon: Icon(reverseSetting.icon),
                     onPressed: () {
                       setState(() {
-                        reverse = !reverse;
+                        notifyReverseChangeIfNeeded(true);
                         normalizeDataIfNeeded();
                       });
                     },
@@ -226,7 +280,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   void normalizeDataIfNeeded() {
     if (widget.willNormalizeData) {
-      normaliedDataSet = reverseData(getNormalizedData(widget.dataSet));
+      normaliedDataSet =
+          reverseData(getNormalizedData(widget.dataSet));
     } else {
       normaliedDataSet = reverseData(widget.dataSet);
     }
@@ -306,8 +361,9 @@ class _OscilloscopeState extends State<Oscilloscope> {
     if (widget.dataSet.length == 0) {
       return width;
     }
-    double calculatedWidth =
-        widget.dataSet.length.toDouble() * widget.xScale * xZoomFactor;
+    double calculatedWidth = widget.dataSet.length.toDouble() *
+        widget.xScale *
+        xZoomFactor;
     if (calculatedWidth <= mediaQueryWidth) {
       calculatedWidth = mediaQueryWidth;
     }
@@ -320,25 +376,31 @@ class _TracePainter extends CustomPainter {
   final List dataSet;
   final double xScale;
   final double yMin;
+  final double yMax;
   final Color traceColor;
-  final Color yAxisColor;
-  final bool showYAxis;
   final double yRange;
   final bool isScrollable;
   final GridDrawingSetting gridDrawingSetting;
   final double strokeWidth;
+  final double yOffsetValue;
+  final double centerValue;
+  final double yZoomFactor;
+  final double multiplier;
 
   _TracePainter({
-    this.showYAxis,
-    this.yAxisColor,
     this.yRange,
     this.yMin,
+    this.yMax,
     this.dataSet,
     this.xScale = 1.0,
     this.traceColor = Colors.white,
     this.isScrollable = false,
     this.gridDrawingSetting,
     this.strokeWidth = 2.0,
+    this.yOffsetValue = 0.0,
+    this.yZoomFactor = 0.0,
+    this.centerValue = 0.75,
+    this.multiplier = 1.0,
   });
 
   @override
@@ -351,11 +413,7 @@ class _TracePainter extends CustomPainter {
 
     final axisPaint = Paint()
       ..strokeWidth = 1.0
-      ..color = yAxisColor;
-
-    double yScale = (size.height / yRange);
-    // only start plot if dataset has data
-    int length = dataSet.length;
+      ..color = Colors.blue;
 
     //If GRid Drawing is enabled
     if (gridDrawingSetting != null) {
@@ -381,16 +439,11 @@ class _TracePainter extends CustomPainter {
       }
     }
 
-    // if yAxis required draw it here
-    if (showYAxis) {
-      double centerPoint = size.height - (0.0 - yMin) * yScale;
-      Offset yStart = Offset(0.0, centerPoint);
-      Offset yEnd = Offset(size.width, centerPoint);
-      canvas.drawLine(yStart, yEnd, axisPaint);
-    }
-
+    int length = dataSet.length;
     if (length > 0) {
-      // transform data set to just what we need if bigger than the width(otherwise this would be a memory hog)
+      double baseY = size.height * 0.5;
+      double yScale = (size.height / yRange) * multiplier;
+
       if (!isScrollable) {
         int maxSize = (size.width.toDouble() ~/ xScale) + 1;
         if (length > maxSize) {
@@ -399,19 +452,15 @@ class _TracePainter extends CustomPainter {
         }
       }
 
-      // Create Path and set Origin to first data point
       Path trace = Path();
-      trace.moveTo(0.0, size.height - (dataSet[0].toDouble() - yMin) * yScale);
-
-      // generate trace path
-      for (int p = 0; p < length; p++) {
-        double plotPoint =
-            size.height - ((dataSet[p].toDouble() - yMin) * yScale);
-        if (p == 0) {}
-        trace.lineTo(p.toDouble() * (xScale), plotPoint);
+      trace.moveTo(0, baseY * 0.5);
+      double x = 0, y = 0;
+      for (int i = 0; i < length; i++) {
+        x = i * xScale;
+        y = (baseY - (dataSet[i].toDouble() - centerValue) * yScale) -
+            yOffsetValue;
+        trace.lineTo(x, y);
       }
-
-      // display the trace
       canvas.drawPath(trace, tracePaint);
     }
   }
@@ -442,9 +491,11 @@ class ReverseSetting {
   final bool reversable;
   final IconData icon;
   final bool initialReversed;
+  final Function(bool value) onReverseChange;
   ReverseSetting({
     this.reversable = false,
     this.icon = Icons.import_export,
     this.initialReversed = false,
+    this.onReverseChange,
   });
 }
