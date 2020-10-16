@@ -111,9 +111,6 @@ class _OscilloscopeState extends State<Oscilloscope> {
   void initState() {
     super.initState();
     centerPoint = widget.centerPoint;
-    if (reverseSetting.initialReversed) {
-      notifyReverseChangeIfNeeded(false);
-    }
     if (widget.willNormalizeData) {
       yMax = 1;
       yMin = 0;
@@ -123,13 +120,16 @@ class _OscilloscopeState extends State<Oscilloscope> {
       yMin = widget.yAxisMin;
       yRange = yMax - yMin;
     }
+    if (reverseSetting.initialReversed) {
+      notifyReverseChangeIfNeeded(false);
+    }
   }
 
   void notifyReverseChangeIfNeeded(bool notifyChange) {
     double yMinTemp = yMin;
-    yMin = -yMax;
-    yMax = -yMinTemp;
-    centerPoint = -centerPoint;
+    yMin = (-1) * yMax;
+    yMax = (-1) * yMinTemp;
+    centerPoint = (-1) * centerPoint;
     reverse = !reverse;
     if (notifyChange && reverseSetting.onReverseChange != null) {
       reverseSetting.onReverseChange(reverse);
