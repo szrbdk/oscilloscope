@@ -189,8 +189,8 @@ class _ShellState extends State<Shell> {
           children: <Widget>[
             Expanded(
               child: Oscilloscope(
-                showYAxis: false,
-                yAxisColor: Colors.lightBlue,
+                // showYAxis: false,
+                // yAxisColor: Colors.lightBlue,
                 padding: 0.0,
                 backgroundColor: Colors.white60,
                 traceColor: Colors.black,
@@ -198,6 +198,7 @@ class _ShellState extends State<Shell> {
                 yAxisMin: ecgMin,
                 xScale: 1,
                 dataSet: ecgBuffer,
+                centerPoint: ecgBuffer.isNotEmpty ? ecgBuffer.first : null,
                 isZoomable: true,
                 isScrollable: false,
                 strokeWidth: 1,
@@ -224,8 +225,8 @@ class _ShellState extends State<Shell> {
                 SizedBox(
                   height: 44,
                   child: Oscilloscope(
-                    showYAxis: false,
-                    yAxisColor: Colors.lightBlue,
+                    // showYAxis: false,
+                    // yAxisColor: Colors.lightBlue,
                     padding: 0.0,
                     backgroundColor: Colors.white60,
                     traceColor: Colors.black.withAlpha(100),
@@ -233,6 +234,7 @@ class _ShellState extends State<Shell> {
                     yAxisMin: ecgMin,
                     xScale: 1,
                     dataSet: ecgPreviewData,
+                    centerPoint: ecgPreviewData.isNotEmpty ? ecgPreviewData.first : null,
                     isZoomable: false,
                     isScrollable: true,
                     strokeWidth: 0.5,
