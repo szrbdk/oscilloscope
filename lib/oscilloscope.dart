@@ -6,7 +6,7 @@ import 'dart:math' as Math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:oscilloscope/monotonex.dart';
+import 'package:oscilloscope/curved.dart';
 
 /// A widget that defines a customisable Oscilloscope type display that can be used to graph out data
 ///
