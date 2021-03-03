@@ -456,10 +456,17 @@ class _TracePainter extends CustomPainter {
       trace.moveTo(0, baseY * 0.5);
       double x = 0, y = 0;
       for (int i = 0; i < length; i++) {
-        x = i * xScale;
-        y = (baseY - (dataSet[i].toDouble() - centerValue) * yScale) -
-            yOffsetValue;
-        trace.lineTo(x, y);
+        try{
+          x = i * xScale;
+          y = (baseY - (dataSet[i] - (centerValue ?? 0)) * yScale) -
+              yOffsetValue;
+          trace.lineTo(x, y);
+        }catch(error,stackTrace){
+          print("Error Value: ${dataSet[i]}, $centerValue");
+          print("ERROR: $error");
+          print("Stack: $stackTrace");
+        }
+
       }
       canvas.drawPath(trace, tracePaint);
     }
