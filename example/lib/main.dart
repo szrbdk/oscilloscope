@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:example/signal_filter/signal_filter.dart';
 /// Demo of using the oscilloscope package
 ///
 /// In this demo 2 displays are generated showing the outputs for Sine & Cosine
@@ -47,9 +48,11 @@ class _ShellState extends State<Shell> {
   double width = 0.0;
   Timer playTimer;
 
+  SignalFilter _signalFilter;
 
   @override
   initState() {
+
     super.initState();
   }
 
@@ -57,8 +60,9 @@ class _ShellState extends State<Shell> {
   void loadECGData() async{
     print("Loading Data");
 //    ByteData byteData = await rootBundle.load("assets/adroid_14min.dat");
-    ByteData byteData = await rootBundle.load("assets/ios_14min.dat");
+    ByteData byteData = await rootBundle.load("assets/RAWTEST4.dat");
     Uint8List list = byteData.buffer.asUint8List();
+    print("DATA VALUE COUNT: ${list.length}");
     List<double> values = [];
 
     double accuracy = 2.656399965286255;
@@ -110,7 +114,7 @@ class _ShellState extends State<Shell> {
       }
     }
 
-    print("VALUE COUNT: ${values.length}");
+    print("VALUE COUNT: ${values.length}, $width");
     ecgMin = values.reduce(min);
     ecgMax = values.reduce(max);
 
@@ -118,6 +122,11 @@ class _ShellState extends State<Shell> {
     ecgPreviewData = [];
     int stepCount = 0;
     int previewSteps = values.length ~/ width;
+    if(previewSteps == 0){
+      previewSteps = 1;
+    }
+    print("PreviewSteps = ${values.length} / $width");
+    print("PreviewSteps = $previewSteps");
     values.forEach((temp){
       double value = temp;
       if (last == null) {
@@ -141,6 +150,7 @@ class _ShellState extends State<Shell> {
     setState(() {
       currentProgress = 0;
       ecgData = fixedEcgValues;
+      // ecgData = fixedEcgValues;
     });
     print("Done converting: ${values.length} - $ecgMax");
 
@@ -156,8 +166,13 @@ class _ShellState extends State<Shell> {
         end = ecgData.length;
         start = ecgData.length - width.toInt();
       }
-      ecgBuffer = ecgData.sublist(start,end);
-      //print("${ecgBuffer}");
+
+      // ecgBuffer = ecgData.sublist(start,end);
+      if(_signalFilter == null){
+        ecgBuffer = ecgData.sublist(start,end);
+      }else{
+        ecgBuffer = _signalFilter.filterValues(ecgData.sublist(start,end));
+      }
     });
   }
 
@@ -172,6 +187,15 @@ class _ShellState extends State<Shell> {
   @override
   Widget build(BuildContext context) {
     width = MediaQuery.of(context).size.width;
+    if(_signalFilter == null){
+      _signalFilter = SignalFilter(width.toInt());
+      // _signalFilter.setBeta(0.01);
+
+    }
+    _signalFilter.setFrequency(125);
+    // _signalFilter.setMinCutoff(50);
+    // _signalFilter.setDerivateCutoff(10);
+    // _signalFilter.setBeta(1);
     // Generate the Scaffold
     return Scaffold(
       appBar: AppBar(

@@ -435,19 +435,23 @@ class _TracePainter extends CustomPainter {
       }
 
       List<Math.Point> points = [];
-      for (int i = 0; i < length; i++) {
-        double x = i * xScale;
-        double y = (baseY - (dataSet[i].toDouble() - centerValue) * yScale) - yOffsetValue;
-        points.add(Math.Point(x, y));
-      }
-
       Path trace;
+      for (int i = 0; i < length; i++) {
+        try {
+          double x = i * xScale;
+          double y = (baseY - (dataSet[i] - centerValue ?? 0) * yScale) - yOffsetValue;
+          points.add(Math.Point(x, y));
+        } catch (error, stackTrace) {
+          print("Error Value: ${dataSet[i]}, $centerValue");
+          print("ERROR: $error");
+          print("Stack: $stackTrace");
+        }
+      }
       if (curved) {
         trace = curveTrace(points);
       } else {
         trace = lineTrace(points, baseY);
       }
-
       canvas.drawPath(trace, tracePaint);
     }
   }
