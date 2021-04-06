@@ -95,7 +95,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   double yMin;
   double yMax;
-  List<double> normaliedDataSet;
+  List<double> normalizedDataSet;
   ScrollController _scrollController = ScrollController(keepScrollOffset: true);
 
   GlobalKey _widgetKey = GlobalKey();
@@ -239,7 +239,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
                 child: ClipRect(
                   child: CustomPaint(
                     painter: _TracePainter(
-                      dataSet: normaliedDataSet,
+                      dataSet: normalizedDataSet,
                       traceColor: widget.traceColor,
                       yMin: yMin,
                       yMax: yMax,
@@ -304,24 +304,19 @@ class _OscilloscopeState extends State<Oscilloscope> {
         ? reverseData(getNormalizedData(widget.dataSet))
         : reverseData(widget.dataSet);
 
-    normaliedDataSet = (widget.signalFilterActive &&
+    normalizedDataSet = (widget.signalFilterActive &&
             _signalFilter != null &&
             widget.filterOptions != null &&
-            widget.filterOptions.filterSize >= _tempDataList.length)
-        ? _signalFilter.filterValues(_tempDataList)
+            _tempDataList.length >= widget.filterOptions.filterSize)
+        ? _signalFilter.filterValues(
+            _tempDataList.sublist(0, widget.filterOptions.filterSize))
         : _tempDataList;
   }
 
   List<double> reverseData(List<double> dataSet) {
-    if (reverse && dataSet.length > 0) {
-      List<double> dataArray = [];
-      dataSet.forEach((element) {
-        dataArray.add(element * (-1));
-      });
-      return dataArray;
-    } else {
-      return dataSet;
-    }
+    return reverse && dataSet.length > 0
+        ? List<double>.from(dataSet.map((e) => e * (-1)))
+        : dataSet;
   }
 
   List<double> getNormalizedData(List<double> dataSet) {
@@ -344,9 +339,9 @@ class _OscilloscopeState extends State<Oscilloscope> {
   }
 
   void updateYRangeIfNeeded() {
-    if (widget.isAdaptiveRange && normaliedDataSet.length > 0) {
-      yMin = normaliedDataSet.reduce(Math.min) * 1.1;
-      yMax = normaliedDataSet.reduce(Math.max) * 1.1;
+    if (widget.isAdaptiveRange && normalizedDataSet.length > 0) {
+      yMin = normalizedDataSet.reduce(Math.min) * 1.1;
+      yMax = normalizedDataSet.reduce(Math.max) * 1.1;
     } else {
       yMin = widget.yAxisMin;
       yMax = widget.yAxisMax;
@@ -397,7 +392,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
 /// A Custom Painter used to generate the trace line from the supplied dataset
 class _TracePainter extends CustomPainter {
-  final List dataSet;
+  final List<double> dataSet;
   final double xScale;
   final double yMin;
   final double yMax;
@@ -461,7 +456,8 @@ class _TracePainter extends CustomPainter {
       }
     }
 
-    int length = dataSet.length;
+    List<double> dataList = [...dataSet];
+    int length = dataList.length;
     if (length > 0) {
       double baseY = size.height * 0.5;
       double yScale = (size.height / yRange) * multiplier;
@@ -469,8 +465,8 @@ class _TracePainter extends CustomPainter {
       if (!isScrollable) {
         int maxSize = (size.width.toDouble() ~/ xScale) + 1;
         if (length > maxSize) {
-          dataSet.removeRange(0, length - maxSize);
-          length = dataSet.length;
+          dataList.removeRange(0, length - maxSize);
+          length = dataList.length;
         }
       }
 
@@ -479,11 +475,11 @@ class _TracePainter extends CustomPainter {
       for (int i = 0; i < length; i++) {
         try {
           double x = i * xScale;
-          double y =
-              (baseY - (dataSet[i] - centerValue ?? 0) * yScale) - yOffsetValue;
+          double y = (baseY - (dataList[i] - centerValue ?? 0) * yScale) -
+              yOffsetValue;
           points.add(Math.Point(x, y));
         } catch (error, stackTrace) {
-          print("Error Value: ${dataSet[i]}, $centerValue");
+          print("Error Value: ${dataList[i]}, $centerValue");
           print("ERROR: $error");
           print("Stack: $stackTrace");
         }
