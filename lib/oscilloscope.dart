@@ -6,6 +6,8 @@ import 'dart:math' as Math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:oscilloscope/curved.dart';
+import 'package:oscilloscope/filter/signal_filter.dart';
 
 /// A widget that defines a customisable Oscilloscope type display that can be used to graph out data
 ///
@@ -39,6 +41,8 @@ class Oscilloscope extends StatefulWidget {
   final bool isZoomable;
   final bool isAdaptiveRange;
   final bool willNormalizeData;
+  final bool curved;
+  final bool signalFilterActive;
   final double centerPoint;
   final double strokeWidth;
   final double dataMultiplier;
@@ -46,6 +50,7 @@ class Oscilloscope extends StatefulWidget {
   final double yTranslateFactor;
   final GridDrawingSetting gridDrawingSetting;
   final ReverseSetting reverseSetting;
+  final FilterOptions filterOptions;
   final Function(double x, double y) onScaleChange;
 
   Oscilloscope({
@@ -62,12 +67,15 @@ class Oscilloscope extends StatefulWidget {
     this.gridDrawingSetting,
     this.strokeWidth = 2.0,
     this.reverseSetting,
+    this.signalFilterActive = false,
     this.dataMultiplier = 1.0,
     @required this.dataSet,
     @required this.centerPoint,
     this.onScaleChange,
     this.yScaleFactor = 0.03,
     this.yTranslateFactor = 0.8,
+    this.curved = false,
+    this.filterOptions,
   });
 
   @override
@@ -87,9 +95,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   double yMin;
   double yMax;
-  List<double> normaliedDataSet;
-  ScrollController _scrollController =
-      ScrollController(keepScrollOffset: true);
+  List<double> normalizedDataSet;
+  ScrollController _scrollController = ScrollController(keepScrollOffset: true);
 
   GlobalKey _widgetKey = GlobalKey();
 
@@ -100,6 +107,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
   ReverseSetting get reverseSetting =>
       widget.reverseSetting ?? ReverseSetting();
   bool get isReversable => reverseSetting.reversable == true;
+
+  SignalFilter _signalFilter;
 
   @override
   void dispose() {
@@ -122,6 +131,18 @@ class _OscilloscopeState extends State<Oscilloscope> {
     }
     if (reverseSetting.initialReversed) {
       notifyReverseChangeIfNeeded(false);
+    }
+  }
+
+  void setSignalFilter() {
+    if (widget.filterOptions != null) {
+      if (_signalFilter == null) {
+        _signalFilter = SignalFilter(widget.filterOptions.filterSize);
+      }
+      _signalFilter.setFrequency(widget.filterOptions.frequency);
+      _signalFilter.setMinCutoff(widget.filterOptions.minCutOff);
+      _signalFilter.setBeta(widget.filterOptions.beta);
+      _signalFilter.setDerivateCutoff(widget.filterOptions.dCutOff);
     }
   }
 
@@ -156,6 +177,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
   @override
   Widget build(BuildContext context) {
+    setSignalFilter();
     scrollToEndIfNeeded(context);
     normalizeDataIfNeeded();
     updateYRangeIfNeeded();
@@ -165,9 +187,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
           bool delta = yDeltaCheck(details.offsetFromOrigin);
           double tranlateValue = 0.0;
           if (delta != null) {
-            tranlateValue = delta
-                ? widget.yTranslateFactor
-                : -widget.yTranslateFactor;
+            tranlateValue =
+                delta ? widget.yTranslateFactor : -widget.yTranslateFactor;
           }
           yOffset = yOffset + tranlateValue;
         });
@@ -180,8 +201,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
                 ((details.primaryDelta >= 0)
                     ? widget.yScaleFactor
                     : -widget.yScaleFactor);
-            yZoomFactor =
-                yZoomFactor <= 0 ? widget.yScaleFactor : yZoomFactor;
+            yZoomFactor = yZoomFactor <= 0 ? widget.yScaleFactor : yZoomFactor;
           });
           notifyScaleChangeIfNeeded();
         }
@@ -219,7 +239,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
                 child: ClipRect(
                   child: CustomPaint(
                     painter: _TracePainter(
-                      dataSet: normaliedDataSet,
+                      dataSet: normalizedDataSet,
                       traceColor: widget.traceColor,
                       yMin: yMin,
                       yMax: yMax,
@@ -232,6 +252,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
                       yOffsetValue: yOffset,
                       yZoomFactor: yZoomFactor,
                       multiplier: widget.dataMultiplier ?? 1.0,
+                      curved: widget.curved,
                     ),
                   ),
                 ),
@@ -279,24 +300,23 @@ class _OscilloscopeState extends State<Oscilloscope> {
   }
 
   void normalizeDataIfNeeded() {
-    if (widget.willNormalizeData) {
-      normaliedDataSet =
-          reverseData(getNormalizedData(widget.dataSet));
-    } else {
-      normaliedDataSet = reverseData(widget.dataSet);
-    }
+    List<double> _tempDataList = widget.willNormalizeData
+        ? reverseData(getNormalizedData(widget.dataSet))
+        : reverseData(widget.dataSet);
+
+    normalizedDataSet = (widget.signalFilterActive &&
+            _signalFilter != null &&
+            widget.filterOptions != null &&
+            _tempDataList.length >= widget.filterOptions.filterSize)
+        ? _signalFilter.filterValues(
+            _tempDataList.sublist(0, widget.filterOptions.filterSize))
+        : _tempDataList;
   }
 
   List<double> reverseData(List<double> dataSet) {
-    if (reverse && dataSet.length > 0) {
-      List<double> dataArray = [];
-      dataSet.forEach((element) {
-        dataArray.add(element * (-1));
-      });
-      return dataArray;
-    } else {
-      return dataSet;
-    }
+    return reverse && dataSet.length > 0
+        ? List<double>.from(dataSet.map((e) => e * (-1)))
+        : dataSet;
   }
 
   List<double> getNormalizedData(List<double> dataSet) {
@@ -319,9 +339,9 @@ class _OscilloscopeState extends State<Oscilloscope> {
   }
 
   void updateYRangeIfNeeded() {
-    if (widget.isAdaptiveRange && normaliedDataSet.length > 0) {
-      yMin = normaliedDataSet.reduce(Math.min) * 1.1;
-      yMax = normaliedDataSet.reduce(Math.max) * 1.1;
+    if (widget.isAdaptiveRange && normalizedDataSet.length > 0) {
+      yMin = normalizedDataSet.reduce(Math.min) * 1.1;
+      yMax = normalizedDataSet.reduce(Math.max) * 1.1;
     } else {
       yMin = widget.yAxisMin;
       yMax = widget.yAxisMax;
@@ -361,9 +381,8 @@ class _OscilloscopeState extends State<Oscilloscope> {
     if (widget.dataSet.length == 0) {
       return width;
     }
-    double calculatedWidth = widget.dataSet.length.toDouble() *
-        widget.xScale *
-        xZoomFactor;
+    double calculatedWidth =
+        widget.dataSet.length.toDouble() * widget.xScale * xZoomFactor;
     if (calculatedWidth <= mediaQueryWidth) {
       calculatedWidth = mediaQueryWidth;
     }
@@ -373,7 +392,7 @@ class _OscilloscopeState extends State<Oscilloscope> {
 
 /// A Custom Painter used to generate the trace line from the supplied dataset
 class _TracePainter extends CustomPainter {
-  final List dataSet;
+  final List<double> dataSet;
   final double xScale;
   final double yMin;
   final double yMax;
@@ -386,6 +405,7 @@ class _TracePainter extends CustomPainter {
   final double centerValue;
   final double yZoomFactor;
   final double multiplier;
+  final bool curved;
 
   _TracePainter({
     this.yRange,
@@ -401,6 +421,7 @@ class _TracePainter extends CustomPainter {
     this.yZoomFactor = 0.0,
     this.centerValue = 0.75,
     this.multiplier = 1.0,
+    this.curved = false,
   });
 
   @override
@@ -410,10 +431,6 @@ class _TracePainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..color = traceColor
       ..style = PaintingStyle.stroke;
-
-    final axisPaint = Paint()
-      ..strokeWidth = 1.0
-      ..color = Colors.blue;
 
     //If GRid Drawing is enabled
     if (gridDrawingSetting != null) {
@@ -439,7 +456,8 @@ class _TracePainter extends CustomPainter {
       }
     }
 
-    int length = dataSet.length;
+    List<double> dataList = [...dataSet];
+    int length = dataList.length;
     if (length > 0) {
       double baseY = size.height * 0.5;
       double yScale = (size.height / yRange) * multiplier;
@@ -447,22 +465,45 @@ class _TracePainter extends CustomPainter {
       if (!isScrollable) {
         int maxSize = (size.width.toDouble() ~/ xScale) + 1;
         if (length > maxSize) {
-          dataSet.removeRange(0, length - maxSize);
-          length = dataSet.length;
+          dataList.removeRange(0, length - maxSize);
+          length = dataList.length;
         }
       }
 
-      Path trace = Path();
-      trace.moveTo(0, baseY * 0.5);
-      double x = 0, y = 0;
+      List<Math.Point> points = [];
+      Path trace;
       for (int i = 0; i < length; i++) {
-        x = i * xScale;
-        y = (baseY - (dataSet[i].toDouble() - centerValue) * yScale) -
-            yOffsetValue;
-        trace.lineTo(x, y);
+        try {
+          double x = i * xScale;
+          double y = (baseY - (dataList[i] - centerValue ?? 0) * yScale) -
+              yOffsetValue;
+          points.add(Math.Point(x, y));
+        } catch (error, stackTrace) {
+          print("Error Value: ${dataList[i]}, $centerValue");
+          print("ERROR: $error");
+          print("Stack: $stackTrace");
+        }
+      }
+      if (curved) {
+        trace = curveTrace(points);
+      } else {
+        trace = lineTrace(points, baseY);
       }
       canvas.drawPath(trace, tracePaint);
     }
+  }
+
+  Path curveTrace(List<Math.Point> points) {
+    return Curved.initPath(points);
+  }
+
+  Path lineTrace(List<Math.Point> points, double baseY) {
+    Path trace = Path();
+    trace.moveTo(0, baseY * 0.5);
+    for (final point in points) {
+      trace.lineTo(point.x, point.y);
+    }
+    return trace;
   }
 
   @override
@@ -497,5 +538,21 @@ class ReverseSetting {
     this.icon = Icons.import_export,
     this.initialReversed = false,
     this.onReverseChange,
+  });
+}
+
+class FilterOptions {
+  final double frequency;
+  final double minCutOff;
+  final double beta;
+  final double dCutOff;
+  final int filterSize;
+
+  FilterOptions({
+    @required this.filterSize,
+    this.frequency = 125,
+    this.minCutOff = 1,
+    this.beta = 0.007,
+    this.dCutOff = 1,
   });
 }
